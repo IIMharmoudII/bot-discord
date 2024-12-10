@@ -179,7 +179,7 @@ async def commandes(ctx):
     embed.add_field(name="!pileouface", value="Lance une pièce.", inline=False)
     embed.add_field(name="!lancerdé", value="Lance un dé.", inline=False)
     embed.add_field(name="!ping", value="Affiche la latence du bot.", inline=False)
-    embed.add_field(name="!pub", value="Affiche notre pub ^^ ", inline=False)
+    embed.add_field(name="!pub", value="Affiche notre pub. ^^ ", inline=False)
     embed.set_footer(text="Tapez une commande pour l'utiliser.")
     await ctx.send(embed=embed)
 
