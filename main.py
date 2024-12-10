@@ -88,7 +88,7 @@ async def insulte(ctx, member: discord.Member = None):
         "t'es un gluant",
         "t'es qu'un bouffeur de niglo",
         "Ton QI est tellement bas qu'il est en négatif.",
-        " Tu es un vrai mystère... même pour les sciences modernes."
+        "Tu es un vrai mystère... même pour les sciences modernes."
         
         
     ]
