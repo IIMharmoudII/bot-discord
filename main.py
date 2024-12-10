@@ -81,13 +81,13 @@ async def insulte(ctx, member: discord.Member = None):
         "moulin à bite",
         "je te pisse dessus, cordialement.",
         "tu es moche, sacré glope.",
-        "tu n'es qu'un manche canette."
-        "glope saucisse"
-        "espece de sac a foutre"
-        "t es qu'un rammasi de fond d'capote"
-        "t'es un gluant"
-        "t qu'un bouffeur de niglo"
-        "Ton QI est tellement bas qu'il est en négatif."
+        "tu n'es qu'un manche canette.",
+        "glope saucisse",
+        "espece de sac a foutre",
+        "t'es qu'un rammasi de fond d'capote",
+        "t'es un gluant",
+        "t'es qu'un bouffeur de niglo",
+        "Ton QI est tellement bas qu'il est en négatif.",
         " Tu es un vrai mystère... même pour les sciences modernes."
         
         
