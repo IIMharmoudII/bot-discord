@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-from discord.ui import View, Button
 import random
 import os
 from dotenv import load_dotenv
@@ -50,118 +49,140 @@ async def on_command_error(ctx, error):
         command = ctx.invoked_with
         matches = get_close_matches(command, command_list, n=1, cutoff=0.6)
         if matches:
-            await ctx.send(f"Cette commande n'existe pas. Peut-être vouliez-vous dire !{matches[0]} ?")
+            await ctx.send(f"Cette commande n'existe pas. Peut-être vouliez-vous dire `!{matches[0]}` ?")
         else:
-            await ctx.send("Cette commande n'existe pas. Tapez !commandes pour voir les commandes disponibles.")
+            await ctx.send("Cette commande n'existe pas. Tapez `!commandes` pour voir les commandes disponibles.")
     elif isinstance(error, commands.MissingPermissions):
         await ctx.send("Vous n'avez pas les permissions nécessaires pour exécuter cette commande.")
     else:
         await ctx.send("Une erreur inattendue s'est produite.")
         raise error
 
-# === Nouvelles données ===
-citations = [
-    "La vie, c'est comme une bicyclette, il faut avancer pour ne pas perdre l'équilibre. - Albert Einstein",
-    "Le succès, c'est tomber sept fois et se relever huit. - Proverbe japonais",
-    "Ne crains pas d’avancer lentement, crains seulement de t’arrêter. - Proverbe chinois",
-    "Si tu veux que la vie te sourie, apporte-lui d’abord ta bonne humeur. - Spinoza",
-    "L'imagination est plus importante que le savoir. - Albert Einstein",
-    "Il n'y a qu'une façon d'échouer, c'est d'abandonner avant d'avoir réussi. - Proverbe américain",
-    "L'humour est une chose trop sérieuse pour être laissée aux comiques. - Guy Bedos",
-    "Les hommes construisent trop de murs et pas assez de ponts. - Isaac Newton"
-]
-
-blagues = [
-    "Pourquoi les plongeurs plongent-ils toujours en arrière ? Parce que sinon ils tombent dans le bateau.",
-    "Que dit une imprimante dans l'eau ? J'ai papier !",
-    "Pourquoi les éoliennes sont-elles toujours contentes ? Parce qu'elles sont pleines d'énergie.",
-    "Quel est le comble pour un électricien ? De ne pas être au courant.",
-    "Pourquoi les canards sont-ils toujours à l'heure ? Parce qu'ils sont dans l'étang !",
-    "C'est l'histoire d'un clown triste. Mais elle fait pas rire.",
-    "Pourquoi les Belges emmènent-ils une échelle dans le supermarché ? Pour atteindre les prix bas !",
-    "Quelle est la différence entre un banquier et un voleur ? Le voleur, lui, te laisse au moins ton sourire."
-]
-
-compliments = [
-    "Tu es brillant(e) comme une étoile dans la nuit.",
-    "Tu illumines la pièce dès que tu entres.",
-    "Tu es un véritable rayon de soleil pour ceux qui t'entourent.",
-    "Tu es tellement talentueux(se), c’est impressionnant !",
-    "Tu rends tout meilleur juste par ta présence.",
-    "Tu as un sourire contagieux, merci de l'apporter au monde !",
-    "Tu as une énergie positive incroyable, c’est inspirant !",
-    "Tu fais une différence dans la vie des gens autour de toi."
-]
-
-insultes = [
-    "Tu es aussi utile qu'un tournevis dans un potage.",
-    "Même un escargot va plus vite que toi dans la réflexion.",
-    "Si la bêtise était une discipline olympique, tu serais médaillé d'or.",
-    "Je pense que Google a renoncé à te comprendre.",
-    "Ton QI est tellement bas qu'il est en négatif.",
-    "Tu es comme un nuage : quand tu pars, c'est une belle journée.",
-    "Tu es un vrai mystère... même pour les sciences modernes."
-]
-
 # === Commandes du bot ===
+
 @bot.command()
 async def pub(ctx):
     message = (
-        "𓂃⊤ 🎀  Sydney 🭸 #ɡя  est un Nouveau serveur  🎀\n\n"
+        "𓂃ꕤ 🎀  Sydney 🧸 #ғя  est un Nouveau serveur  🎀\n\n"
         "🎓   Avec une communauté safe\n"
         "🏰   Où faire de nouvelles rencontres\n"
         "🏆   Gagne des rôles en étant Actif sur le serveur\n"
-        "🎮   Du Gambling et pleins d'autres jeux\n"
+        "🎲   Du Gambling et pleins d'autres jeux\n"
         "🎉   Pleins d'évènements qui arrive\n"
         "✨   Un rôle OG pour le début du serveur !\n\n"
-        "ן   🎗️ Qu'attends-tu pour rejoindre !\n\n"
-        "🏡   https://discord.gg/sydneyfr"
+        "彡   🎗️ Qu'attends-tu pour rejoindre !\n\n"
+        "🏯   https://discord.gg/sydneyfr"
     )
     await ctx.send(message)
 
 @bot.command()
-async def citation(ctx):
-    await ctx.send(random.choice(citations))
+async def insulte(ctx, member: discord.Member = None):
+    insultes = [
+        "moulin à bite",
+        "je te pisse dessus, cordialement.",
+        "tu es moche, sacré glope.",
+        "tu n'es qu'un manche canette."
+        "glope saucisse"
+        "espece de sac a foutre"
+        "t es qu'un rammasi de fond d'capote"
+        "t'es un gluant"
+        "t qu'un bouffeur de niglo"
+        "Ton QI est tellement bas qu'il est en négatif."
+        " Tu es un vrai mystère... même pour les sciences modernes."
+        
+        
+    ]
+
+    if member is None:
+        if ctx.guild:
+            human_members = [m for m in ctx.guild.members if not m.bot]
+            if not human_members:
+                await ctx.send("Il n'y a pas de membres humains à insulter.")
+                return
+            member = random.choice(human_members)
+        else:
+            await ctx.send("Cette commande doit être utilisée dans un serveur.")
+            return
+
+    if member.bot:
+        await ctx.send("Je ne peux pas insulter un bot.")
+        return
+
+    await ctx.send(f"{member.mention}, {random.choice(insultes)}")
 
 @bot.command()
 async def compliment(ctx, member: discord.Member = None):
-    target = member.mention if member else ctx.author.mention
-    await ctx.send(f"{target}, {random.choice(compliments)}")
+    compliments = [
+        "Tu es brillant(e) comme une étoile dans la nuit.",
+        "Tu illumines la pièce dès que tu entres.",
+        "Tu es un véritable rayon de soleil pour ceux qui t'entourent.",
+        "Tu es tellement talentueux(se), c’est impressionnant !"
+    ]
+
+    if member is None:
+        if ctx.guild:
+            human_members = [m for m in ctx.guild.members if not m.bot]
+            if not human_members:
+                await ctx.send("Il n'y a pas de membres humains à complimenter.")
+                return
+            member = random.choice(human_members)
+        else:
+            await ctx.send("Cette commande doit être utilisée dans un serveur.")
+            return
+
+    if member.bot:
+        await ctx.send("Je ne peux pas complimenter un bot.")
+        return
+
+    await ctx.send(f"{member.mention}, {random.choice(compliments)}")
 
 @bot.command()
-async def insulte(ctx, member: discord.Member = None):
-    target = member.mention if member else ctx.author.mention
-    await ctx.send(f"{target}, {random.choice(insultes)}")
+async def citation(ctx):
+    citations = [
+        "La vie, c'est comme une bicyclette, il faut avancer pour ne pas perdre l'équilibre. - Albert Einstein",
+        "Le succès, c'est tomber sept fois et se relever huit. - Proverbe japonais",
+        "Ne crains pas d’avancer lentement, crains seulement de t’arrêter. - Proverbe chinois",
+        "Si tu veux que la vie te sourie, apporte-lui d’abord ta bonne humeur. - Spinoza"
+    ]
+    await ctx.send(random.choice(citations))
 
 @bot.command()
 async def blague(ctx):
+    blagues = [
+        "Pourquoi les plongeurs plongent-ils toujours en arrière ? Parce que sinon ils tombent dans le bateau.",
+        "Que dit une imprimante dans l'eau ? J'ai papier !",
+        "Pourquoi les éoliennes sont-elles toujours contentes ? Parce qu'elles sont pleines d'énergie.",
+        "Quel est le comble pour un électricien ? De ne pas être au courant."
+    ]
     message = await ctx.send(random.choice(blagues))
     await message.add_reaction("😂")
 
-class CommandesView(View):
-    def __init__(self):
-        super().__init__(timeout=None)
-        self.page = 0
-        self.pages = [
-            "**Commandes Page 1**:\n!insulte\n!compliment\n!citation\n!blague\n!qi",
-            "**Commandes Page 2**:\n!pileouface\n!lancerdé\n!ping\n!pub\n!shutdown"
-        ]
-
-    @discord.ui.button(label="◀️", style=discord.ButtonStyle.blurple)
-    async def prev_page(self, interaction: discord.Interaction, button: Button):
-        self.page = max(self.page - 1, 0)
-        await interaction.response.edit_message(content=self.pages[self.page], view=self)
-
-    @discord.ui.button(label="▶️", style=discord.ButtonStyle.blurple)
-    async def next_page(self, interaction: discord.Interaction, button: Button):
-        self.page = min(self.page + 1, len(self.pages) - 1)
-        await interaction.response.edit_message(content=self.pages[self.page], view=self)
+@bot.command()
+async def qi(ctx, member: discord.Member = None):
+    user_id = member.id if member else ctx.author.id
+    if user_id not in user_qi:
+        user_qi[user_id] = random.randint(50, 150)
+    await ctx.send(f"Le QI de {member.mention if member else ctx.author.mention} est de {user_qi[user_id]}.")
 
 @bot.command()
 async def commandes(ctx):
-    await ctx.send(content="Voici les commandes disponibles :", view=CommandesView())
+    embed = discord.Embed(
+        title="Liste des commandes disponibles",
+        description="Voici les commandes que vous pouvez utiliser avec ce bot :",
+        color=discord.Color.blue()
+    )
+    embed.add_field(name="!insulte", value="Insulte un utilisateur.", inline=False)
+    embed.add_field(name="!compliment", value="Complimente un utilisateur.", inline=False)
+    embed.add_field(name="!citation", value="Affiche une citation aléatoire.", inline=False)
+    embed.add_field(name="!blague", value="Raconte une blague aléatoire.", inline=False)
+    embed.add_field(name="!qi", value="Affiche le QI d'un utilisateur.", inline=False)
+    embed.add_field(name="!pileouface", value="Lance une pièce.", inline=False)
+    embed.add_field(name="!lancerdé", value="Lance un dé.", inline=False)
+    embed.add_field(name="!ping", value="Affiche la latence du bot.", inline=False)
+    embed.add_field(name="!pub", value="Affiche un message promotionnel.", inline=False)
+    embed.set_footer(text="Tapez une commande pour l'utiliser.")
+    await ctx.send(embed=embed)
 
-# === Autres commandes ===
 @bot.command()
 async def pileouface(ctx):
     await ctx.send(f"C'est... {random.choice(['Pile', 'Face'])} !")
