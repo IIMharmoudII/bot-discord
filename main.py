@@ -208,4 +208,6 @@ async def blague(ctx):
     message = await ctx.send(random.choice(blagues))
     await message.add_reaction("😂")
 
-@bot.command()
+# === Lancer le bot ===
+keep_alive()
+bot.run
