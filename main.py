@@ -1,11 +1,13 @@
 import discord
 from discord.ext import commands
+from discord.ext.commands import cooldown, BucketType
 import random
 import os
 from dotenv import load_dotenv
 from flask import Flask
 from threading import Thread
 from difflib import get_close_matches
+import time
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -22,6 +24,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # Variables globales
 user_qi = {}
 user_aura = {}
+last_interaction = {}  # Stocke les derniers timestamps des interactions (insulte, compliment)
 command_list = [
     "insulte", "compliment", "citation", "blague", "qi", "commandes",
     "pileouface", "lancerdé", "ping", "shutdown", "pub", "aura", "classement"
@@ -55,6 +58,8 @@ async def on_command_error(ctx, error):
             await ctx.send(f"Cette commande n'existe pas. Peut-être vouliez-vous dire `!{matches[0]}` ?")
         else:
             await ctx.send("Cette commande n'existe pas. Tapez `!commandes` pour voir les commandes disponibles.")
+    elif isinstance(error, commands.CommandOnCooldown):
+        await ctx.send(f"Cette commande est en cooldown. Réessayez dans {error.retry_after:.0f} secondes.")
     elif isinstance(error, commands.MissingPermissions):
         await ctx.send("Vous n'avez pas les permissions nécessaires pour exécuter cette commande.")
     else:
@@ -78,6 +83,7 @@ async def pub(ctx):
     await ctx.send(message)
 
 @bot.command()
+@cooldown(1, 1800, BucketType.user)  # Cooldown de 30 minutes par utilisateur
 async def insulte(ctx, member: discord.Member = None):
     if member is None or member == ctx.author:
         await ctx.send("Tu ne peux pas t'insulter toi-même.")
@@ -93,6 +99,7 @@ async def insulte(ctx, member: discord.Member = None):
     await ctx.send(f"{member.mention}, {random.choice(insultes)} (Aura restante : {user_aura[ctx.author.id]})")
 
 @bot.command()
+@cooldown(1, 1800, BucketType.user)  # Cooldown de 30 minutes par utilisateur
 async def compliment(ctx, member: discord.Member = None):
     if member is None or member == ctx.author:
         await ctx.send("Tu ne peux pas te complimenter toi-même.")
@@ -126,23 +133,30 @@ async def classement(ctx):
     await ctx.send(message)
 
 @bot.command()
-async def citation(ctx):
-    citations = [
-        "La vie, c'est comme une bicyclette, il faut avancer pour ne pas perdre l'équilibre. - Albert Einstein",
-        "Le succès, c'est tomber sept fois et se relever huit. - Proverbe japonais",
-        "Ne crains pas d’avancer lentement, crains seulement de t’arrêter. - Proverbe chinois",
-        "Si tu veux que la vie te sourie, apporte-lui d’abord ta bonne humeur. - Spinoza"
-    ]
-    await ctx.send(random.choice(citations))
+async def commandes(ctx):
+    embed = discord.Embed(
+        title="Liste des commandes disponibles",
+        description="Voici les commandes que vous pouvez utiliser avec ce bot :",
+        color=discord.Color.blue()
+    )
+    embed.add_field(name="!insulte", value="Insulte un utilisateur.", inline=False)
+    embed.add_field(name="!compliment", value="Complimente un utilisateur.", inline=False)
+    embed.add_field(name="!citation", value="Affiche une citation aléatoire.", inline=False)
+    embed.add_field(name="!blague", value="Raconte une blague aléatoire.", inline=False)
+    embed.add_field(name="!qi", value="Affiche le QI d'un utilisateur.", inline=False)
+    embed.add_field(name="!pileouface", value="Lance une pièce.", inline=False)
+    embed.add_field(name="!lancerdé", value="Lance un dé.", inline=False)
+    embed.add_field(name="!ping", value="Affiche la latence du bot.", inline=False)
+    embed.add_field(name="!pub", value="Affiche notre pub. ^^ ", inline=False)
+    embed.add_field(name="!aura", value="Affiche votre aura.", inline=False)
+    embed.add_field(name="!classement", value="Affiche le classement des auras.", inline=False)
+    embed.set_footer(text="Tapez une commande pour l'utiliser.")
+    await ctx.send(embed=embed)
 
 @bot.command()
-async def blague(ctx):
-    blagues = [
-        "Pourquoi les plongeurs plongent-ils toujours en arrière ? Parce que sinon ils tombent dans le bateau.",
-        "Que dit une imprimante dans l'eau ? J'ai papier !",
-        "Pourquoi les éoliennes sont-elles toujours contentes ? Parce qu'elles sont pleines d'énergie."
-    ]
-    await ctx.send(random.choice(blagues))
+async def ping(ctx):
+    latency = round(bot.latency * 1000)
+    await ctx.send(f"Pong ! 🏓 Latence : {latency}ms")
 
 @bot.command()
 @commands.is_owner()
