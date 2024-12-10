@@ -2,12 +2,10 @@ import discord
 from discord.ext import commands
 import random
 import os
-import asyncio
 from dotenv import load_dotenv
 from flask import Flask
 from threading import Thread
 from difflib import get_close_matches
-from datetime import datetime, timedelta
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -23,12 +21,9 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Variables globales
 user_qi = {}
-user_aura = {}  # Stockage de l'aura des utilisateurs
-last_action_time = {}  # Stockage des derniers moments des actions
-aura_change = 10  # Points d'aura modifiés par compliment ou insulte
-command_cooldown = timedelta(minutes=30)  # Délai entre deux actions
+user_aura = {}
 command_list = [
-    "insulte", "compliment", "citation", "blague", "qi", "commandes", 
+    "insulte", "compliment", "citation", "blague", "qi", "commandes",
     "pileouface", "lancerdé", "ping", "shutdown", "pub", "aura", "classement"
 ]
 
@@ -46,20 +41,6 @@ def keep_alive():
     t = Thread(target=run)
     t.start()
 
-# === Fonction pour gérer les délais ===
-def can_perform_action(user_id, action):
-    now = datetime.now()
-    if user_id not in last_action_time:
-        last_action_time[user_id] = {}
-    if action not in last_action_time[user_id]:
-        last_action_time[user_id][action] = now - command_cooldown
-    return now - last_action_time[user_id][action] >= command_cooldown
-
-def update_last_action(user_id, action):
-    if user_id not in last_action_time:
-        last_action_time[user_id] = {}
-    last_action_time[user_id][action] = datetime.now()
-
 # === Gestion des erreurs globales ===
 @bot.event
 async def on_command_error(ctx, error):
@@ -71,9 +52,9 @@ async def on_command_error(ctx, error):
         command = ctx.invoked_with
         matches = get_close_matches(command, command_list, n=1, cutoff=0.6)
         if matches:
-            await ctx.send(f"Cette commande n'existe pas. Peut-être vouliez-vous dire !{matches[0]} ?")
+            await ctx.send(f"Cette commande n'existe pas. Peut-être vouliez-vous dire `!{matches[0]}` ?")
         else:
-            await ctx.send("Cette commande n'existe pas. Tapez !commandes pour voir les commandes disponibles.")
+            await ctx.send("Cette commande n'existe pas. Tapez `!commandes` pour voir les commandes disponibles.")
     elif isinstance(error, commands.MissingPermissions):
         await ctx.send("Vous n'avez pas les permissions nécessaires pour exécuter cette commande.")
     else:
@@ -98,49 +79,23 @@ async def pub(ctx):
 
 @bot.command()
 async def insulte(ctx, member: discord.Member = None):
-    user_id = ctx.author.id
-    if not can_perform_action(user_id, "insulte"):
-        remaining = command_cooldown - (datetime.now() - last_action_time[user_id]["insulte"])
-        minutes, seconds = divmod(remaining.seconds, 60)
-        await ctx.send(f"Tu dois attendre encore {minutes} minutes et {seconds} secondes avant d'insulter à nouveau.")
+    if member is None or member == ctx.author:
+        await ctx.send("Tu ne peux pas t'insulter toi-même.")
         return
 
     insultes = [
-        "moulin à bite",
-        "je te pisse dessus, cordialement.",
-        "tu es moche, sacré glope.",
-        "tu n'es qu'un manche canette.",
-        "Ton QI est tellement bas qu'il est en négatif.",
-        "Tu es un vrai mystère... même pour les sciences modernes."
+        "moulin à bite", "je te pisse dessus, cordialement.",
+        "tu es moche, sacré glope.", "tu n'es qu'un manche canette.",
+        "t'es qu'un bouffeur de niglo", "Ton QI est tellement bas qu'il est en négatif."
     ]
 
-    if member is None:
-        if ctx.guild:
-            human_members = [m for m in ctx.guild.members if not m.bot]
-            if not human_members:
-                await ctx.send("Il n'y a pas de membres humains à insulter.")
-                return
-            member = random.choice(human_members)
-        else:
-            await ctx.send("Cette commande doit être utilisée dans un serveur.")
-            return
-
-    if member.bot:
-        await ctx.send("Je ne peux pas insulter un bot.")
-        return
-
-    # Réduction d'aura
-    user_aura[ctx.author.id] = user_aura.get(ctx.author.id, 1000) - aura_change
+    user_aura[ctx.author.id] = user_aura.get(ctx.author.id, 1000) - 10
     await ctx.send(f"{member.mention}, {random.choice(insultes)} (Aura restante : {user_aura[ctx.author.id]})")
-    update_last_action(user_id, "insulte")
 
 @bot.command()
 async def compliment(ctx, member: discord.Member = None):
-    user_id = ctx.author.id
-    if not can_perform_action(user_id, "compliment"):
-        remaining = command_cooldown - (datetime.now() - last_action_time[user_id]["compliment"])
-        minutes, seconds = divmod(remaining.seconds, 60)
-        await ctx.send(f"Tu dois attendre encore {minutes} minutes et {seconds} secondes avant de complimenter à nouveau.")
+    if member is None or member == ctx.author:
+        await ctx.send("Tu ne peux pas te complimenter toi-même.")
         return
 
     compliments = [
@@ -150,25 +105,8 @@ async def compliment(ctx, member: discord.Member = None):
         "Tu es tellement talentueux(se), c’est impressionnant !"
     ]
 
-    if member is None:
-        if ctx.guild:
-            human_members = [m for m in ctx.guild.members if not m.bot]
-            if not human_members:
-                await ctx.send("Il n'y a pas de membres humains à complimenter.")
-                return
-            member = random.choice(human_members)
-        else:
-            await ctx.send("Cette commande doit être utilisée dans un serveur.")
-            return
-
-    if member.bot:
-        await ctx.send("Je ne peux pas complimenter un bot.")
-        return
-
-    # Augmentation d'aura
-    user_aura[ctx.author.id] = user_aura.get(ctx.author.id, 1000) + aura_change
+    user_aura[ctx.author.id] = user_aura.get(ctx.author.id, 1000) + 10
     await ctx.send(f"{member.mention}, {random.choice(compliments)} (Aura actuelle : {user_aura[ctx.author.id]})")
-    update_last_action(user_id, "compliment")
 
 @bot.command()
 async def aura(ctx):
@@ -202,12 +140,16 @@ async def blague(ctx):
     blagues = [
         "Pourquoi les plongeurs plongent-ils toujours en arrière ? Parce que sinon ils tombent dans le bateau.",
         "Que dit une imprimante dans l'eau ? J'ai papier !",
-        "Pourquoi les éoliennes sont-elles toujours contentes ? Parce qu'elles sont pleines d'énergie.",
-        "Quel est le comble pour un électricien ? De ne pas être au courant."
+        "Pourquoi les éoliennes sont-elles toujours contentes ? Parce qu'elles sont pleines d'énergie."
     ]
-    message = await ctx.send(random.choice(blagues))
-    await message.add_reaction("😂")
+    await ctx.send(random.choice(blagues))
 
-# === Lancer le bot ===
+@bot.command()
+@commands.is_owner()
+async def shutdown(ctx):
+    await ctx.send("Arrêt du bot... 🛑")
+    await bot.close()
+
+# Lancement du bot
 keep_alive()
-bot.run
+bot.run(TOKEN)
