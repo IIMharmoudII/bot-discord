@@ -201,6 +201,73 @@ async def ping(ctx):
 async def shutdown(ctx):
     await ctx.send("Arrêt du bot... 🛑")
     await bot.close()
+# Variable globale pour stocker les coins des utilisateurs
+user_coins = {}
+
+# Fonction pour ajouter des coins à un utilisateur
+def ajouter_coins(user_id, amount):
+    if user_id not in user_coins:
+        user_coins[user_id] = 0
+    user_coins[user_id] += amount
+
+# Fonction pour retirer des coins à un utilisateur
+def retirer_coins(user_id, amount):
+    if user_id not in user_coins or user_coins[user_id] < amount:
+        return False  # Si l'utilisateur n'a pas assez de coins
+    user_coins[user_id] -= amount
+    return True
+
+# Commande pour donner des coins à un utilisateur
+@bot.command()
+async def donnercoins(ctx, member: discord.Member, amount: int):
+    if amount <= 0:
+        await ctx.send("Le montant doit être supérieur à zéro.")
+        return
+
+    ajouter_coins(member.id, amount)
+    await ctx.send(f"{member.mention} a reçu {amount} coins ! 🎉")
+
+# Commande pour vérifier le solde des coins d'un utilisateur
+@bot.command()
+async def coins(ctx, member: discord.Member = None):
+    user_id = member.id if member else ctx.author.id
+    coins = user_coins.get(user_id, 0)
+    await ctx.send(f"{member.mention if member else ctx.author.mention} a {coins} coins.")*
+
+@bot.command()
+async def blague(ctx):
+    blagues = [
+        "Pourquoi les plongeurs plongent-ils toujours en arrière ? Parce que sinon ils tombent dans le bateau.",
+        "Que dit une imprimante dans l'eau ? J'ai papier !",
+        "Pourquoi les éoliennes sont-elles toujours contentes ? Parce qu'elles sont pleines d'énergie.",
+        "Quel est le comble pour un électricien ? De ne pas être au courant."
+    ]
+    message = await ctx.send(random.choice(blagues))
+    await message.add_reaction("😂")
+    
+    # Ajouter des coins après avoir lancé une blague
+    ajouter_coins(ctx.author.id, 10)  # 10 coins pour avoir lancé une blague
+    await ctx.send(f"{ctx.author.mention} a gagné 10 coins pour avoir lancé une blague ! 🎉")
+
+# Exemple d'achat d'un item virtuel
+@bot.command()
+async def acheter(ctx, item: str):
+    price = 0
+
+    # Définir le prix de certains items
+    if item.lower() == "rôle spécial":
+        price = 100  # Exemple : un rôle spécial coûte 100 coins
+    elif item.lower() == "insulte spéciale":
+        price = 50  # Une insulte spéciale coûte 50 coins
+    else:
+        await ctx.send("Désolé, cet item n'existe pas.")
+        return
+
+    if not retirer_coins(ctx.author.id, price):
+        await ctx.send(f"Désolé, vous n'avez pas assez de coins pour acheter {item}.")
+    else:
+        await ctx.send(f"Félicitations {ctx.author.mention}, vous avez acheté un {item} ! 🎉")
+
 
 # Lancement du bot
 keep_alive()
