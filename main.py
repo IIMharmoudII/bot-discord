@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 import random
 import json
+from difflib import get_close_matches
 
 # Initialisation du bot
 intents = discord.Intents.default()
@@ -9,10 +10,10 @@ intents.messages = True
 intents.message_content = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# Fichier pour sauvegarder les données
+# Fichier pour sauvegarder les données utilisateur
 data_file = "user_data.json"
 
-# Chargement et sauvegarde des données
+# Charger et sauvegarder les données utilisateur
 def load_data():
     try:
         with open(data_file, "r") as file:
@@ -26,7 +27,7 @@ def save_data(data):
 
 user_data = load_data()
 
-# Gestion des utilisateurs
+# Gestion des données utilisateur
 def get_user_data(user_id):
     if str(user_id) not in user_data:
         user_data[str(user_id)] = {"aura": 0, "qi": random.randint(80, 140)}
@@ -37,7 +38,21 @@ def update_user_data(user_id, aura_change=0):
     user["aura"] += aura_change
     save_data(user_data)
 
-# Commandes de base
+# Suggestions en cas de commande incorrecte
+available_commands = ["qi", "aura", "insulte", "compliment", "classement", "pub", "pfc", "pileouface"]
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CommandNotFound):
+        close_match = get_close_matches(ctx.invoked_with, available_commands, n=1, cutoff=0.6)
+        if close_match:
+            await ctx.send(f"Commande inconnue. Vouliez-vous dire `!{close_match[0]}` ?")
+        else:
+            await ctx.send("Commande inconnue. Tapez `!help` pour voir les commandes disponibles.")
+    else:
+        raise error
+
+# Commandes principales
 @bot.command()
 async def qi(ctx, member: discord.Member = None):
     if not member:
@@ -51,7 +66,8 @@ async def aura(ctx, member: discord.Member = None):
         member = ctx.author
     user = get_user_data(member.id)
     await ctx.send(f"{member.mention} a {user['aura']} d'aura.")
-# Listes d'insultes et de compliments
+
+# Insultes et Compliments
 insultes = {
     "glope saucisse": -500,
     "sac à foutre": -1000,
@@ -68,7 +84,6 @@ compliments = {
     "Bravo pour ton travail exceptionnel!": 2000
 }
 
-# Commande !insulte
 @bot.command()
 async def insulte(ctx, member: discord.Member = None):
     if member and member.bot:
@@ -84,11 +99,31 @@ async def insulte(ctx, member: discord.Member = None):
     update_user_data(member.id, aura_change=aura_loss)
     await ctx.send(f"{member.mention}, {insult}! (Aura perdue : {abs(aura_loss)})")
 
-# Commande !compliment
 @bot.command()
 async def compliment(ctx, member: discord.Member = None):
     if member and member.bot:
-        await ctx.send("Tu ne
+        await ctx.send("Tu ne peux pas complimenter un bot.")
+        return
+    if not member:
+        member = random.choice(ctx.guild.members)
+
+    compliment, aura_gain = random.choice(list(compliments.items()))
+    update_user_data(member.id, aura_change=aura_gain)
+    await ctx.send(f"{member.mention}, {compliment} (Aura gagnée : {aura_gain})")
+
+# Classement et publicité
+@bot.command()
+async def classement(ctx):
+    sorted_users = sorted(user_data.items(), key=lambda x: x[1]["aura"], reverse=True)[:10]
+    leaderboard = "**Classement des auras :**\n"
+    for i, (user_id, data) in enumerate(sorted_users, start=1):
+        try:
+            member = await ctx.guild.fetch_member(int(user_id))
+            leaderboard += f"{i}. {member.display_name} - {data['aura']} auras\n"
+        except discord.NotFound:
+            continue
+    await ctx.send(leaderboard)
+
 @bot.command()
 async def pub(ctx):
     pub_message = """𓂃ꕤ 🎀  Sydney 🧸 #ғя  est un Nouveau serveur 🎀
@@ -103,34 +138,19 @@ async def pub(ctx):
 🏯 https://discord.gg/sydneyfr"""
     await ctx.send(pub_message)
 
-@bot.command()
-async def commandes(ctx):
-    commands_list = """
-**Commandes disponibles :**
-- `!qi`: Affiche votre QI ou celui d'une autre personne.
-- `!aura`: Affiche votre aura ou celle d'une autre personne.
-- `!insulte`: Insulte une personne.
-- `!compliment`: Complimente une personne.
-- `!pub`: Affiche la pub du serveur.
-- `!classement`: Affiche le classement des utilisateurs.
-"""
-    await ctx.send(commands_list)
-
-@bot.command()
-async def classement(ctx):
-    sorted_users = sorted(user_data.items(), key=lambda x: x[1]["aura"], reverse=True)[:10]
-    leaderboard = "**Classement des auras :**\n"
-    for i, (user_id, data) in enumerate(sorted_users, start=1):
-        member = await ctx.guild.fetch_member(int(user_id))
-        leaderboard += f"{i}. {member.display_name} - {data['aura']} auras\n"
-    await ctx.send(leaderboard)
+# Mini-jeux
 @bot.command()
 async def pfc(ctx):
-    await ctx.send("Qui veut jouer à Pierre Feuille Ciseaux avec moi ? Cliquez sur le bouton pour commencer.")
+    options = ["Pierre", "Feuille", "Ciseaux"]
+    bot_choice = random.choice(options)
+    await ctx.send(f"Pierre, Feuille ou Ciseaux ? Le bot a choisi : {bot_choice}.")
 
-# Commande Pile ou Face
 @bot.command()
 async def pileouface(ctx):
     options = ["Pile", "Face"]
     result = random.choice(options)
     await ctx.send(f"La pièce est tombée sur : {result}.")
+
+# Lancer le bot
+if __name__ == "__main__":
+    bot.run("TOKEN")
