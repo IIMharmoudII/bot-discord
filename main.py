@@ -72,7 +72,11 @@ async def on_command_error(ctx, error):
     elif isinstance(error, commands.BadArgument):
         await ctx.send("L'argument fourni n'est pas valide.")
     elif isinstance(error, commands.CommandNotFound):
-        await ctx.send("Cette commande n'existe pas. Tapez `!commandes` pour voir les commandes disponibles.")
+        closest_command = next((cmd for cmd in command_list if cmd.startswith(ctx.invoked_with[:2])), None)
+        if closest_command:
+            await ctx.send(f"Cette commande n'existe pas. Vouliez-vous dire `!{closest_command}` ?")
+        else:
+            await ctx.send("Cette commande n'existe pas. Tapez `!commandes` pour voir les commandes disponibles.")
     elif isinstance(error, commands.CommandOnCooldown):
         await ctx.send(f"Cette commande est en cooldown. Réessayez dans {int(error.retry_after)} secondes.")
     elif isinstance(error, commands.MissingPermissions):
@@ -173,12 +177,16 @@ async def citation(ctx):
 @bot.command()
 async def blague(ctx):
     blagues = [
-        "Pourquoi les éléphants ne bronzent-ils pas ? Parce qu’ils ont peur des coups de soleil !",
-        "Que dit un électricien quand il est content ? Je suis au courant !",
-        "Pourquoi est-ce que les plongeurs plongent toujours en arrière et jamais en avant ? Parce que sinon ils tombent dans le bateau !",
-        "Qu’est-ce qui est jaune et qui attend ? Jonathan !"
+        ("Pourquoi les éléphants ne bronzent-ils pas ? Parce qu’ils ont peur des coups de soleil !", 10),
+        ("Que dit un électricien quand il est content ? Je suis au courant !", 20),
+        ("Pourquoi est-ce que les plongeurs plongent toujours en arrière et jamais en avant ? Parce que sinon ils tombent dans le bateau !", -10),
+        ("Qu’est-ce qui est jaune et qui attend ? Jonathan !", -20)
     ]
-    await ctx.send(random.choice(blagues))
+    blague, aura_change = random.choice(blagues)
+    user_aura[ctx.author.id] = user_aura.get(ctx.author.id, 1000) + aura_change
+    save_data()
+    aura_msg = f"(Aura {'gagnée' if aura_change > 0 else 'perdue'} : {abs(aura_change)} points)"
+    await ctx.send(f"{ctx.author.mention}, {blague} {aura_msg}")
 
 @bot.command()
 async def ping(ctx):
@@ -205,6 +213,8 @@ async def supaura(ctx, member: discord.Member, points: int):
     save_data()
     await ctx.send(f"{member.mention} a maintenant {user_aura[member.id]} points d'aura.")
 
-# Lancement du bot
-keep_alive()
-bot.run(TOKEN)
+@bot.command()
+async def lancerdé(ctx):
+    result = random.randint(1, 6)
+    await ctx.send(f"{ctx.author.mention}, vous avez lancé un dé et obtenu : {result}.")
+    
