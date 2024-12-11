@@ -24,10 +24,9 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # Variables globales
 user_qi = {}
 user_aura = {}
-last_interaction = {}  # Stocke les derniers timestamps des interactions (insulte, compliment)
 command_list = [
     "insulte", "compliment", "citation", "blague", "qi", "commandes",
-    "pileouface", "lancerdé", "ping", "shutdown", "pub", "aura", "classement"
+    "pileouface", "lancerdé", "ping", "shutdown", "pub", "aura", "classement", "add", "pfc"
 ]
 
 # === Serveur Web pour garder le bot actif ===
@@ -55,7 +54,11 @@ async def on_command_error(ctx, error):
         command = ctx.invoked_with
         matches = get_close_matches(command, command_list, n=1, cutoff=0.6)
         if matches:
-            await ctx.send(f"Cette commande n'existe pas. Peut-être vouliez-vous dire `!{matches[0]}` ?")
+            view = discord.ui.View()
+            button = discord.ui.Button(label=f"Utiliser !{matches[0]}", style=discord.ButtonStyle.primary)
+            button.callback = lambda interaction: ctx.invoke(bot.get_command(matches[0]))
+            view.add_item(button)
+            await ctx.send("Cette commande n'existe pas.", view=view)
         else:
             await ctx.send("Cette commande n'existe pas. Tapez `!commandes` pour voir les commandes disponibles.")
     elif isinstance(error, commands.CommandOnCooldown):
@@ -70,15 +73,15 @@ async def on_command_error(ctx, error):
 @bot.command()
 async def pub(ctx):
     message = (
-        "𓂃ꕤ 🎀  Sydney 🧸 #ғя  est un Nouveau serveur  🎀\n\n"
-        "🎓   Avec une communauté safe\n"
-        "🏰   Où faire de nouvelles rencontres\n"
-        "🏆   Gagne des rôles en étant Actif sur le serveur\n"
-        "🎲   Du Gambling et pleins d'autres jeux\n"
-        "🎉   Pleins d'évènements qui arrive\n"
-        "✨   Un rôle OG pour le début du serveur !\n\n"
-        "彡   🎗️ Qu'attends-tu pour rejoindre !\n\n"
-        "🏯   https://discord.gg/sydneyfr"
+        "\U00010243\U0001fab4 \ud83c\udf80  Sydney \ud83e\uddf8 #\u044f  est un Nouveau serveur  \ud83c\udf80\n\n"
+        "\ud83c\udf93   Avec une communauté safe\n"
+        "\ud83c\udff0   Où faire de nouvelles rencontres\n"
+        "\ud83c\udfc6   Gagne des rôles en étant Actif sur le serveur\n"
+        "\ud83c\udfb2   Du Gambling et pleins d'autres jeux\n"
+        "\ud83c\udf89   Pleins d'évènements qui arrive\n"
+        "\u2728   Un rôle OG pour le début du serveur !\n\n"
+        "彡   \ud83c\udf97\ufe0f Qu'attends-tu pour rejoindre !\n\n"
+        "\ud83c\udfe2   https://discord.gg/sydneyfr"
     )
     await ctx.send(message)
 
@@ -95,11 +98,11 @@ async def insulte(ctx, member: discord.Member = None):
         "t'es qu'un bouffeur de niglo", "Ton QI est tellement bas qu'il est en négatif."
     ]
 
-    user_aura[ctx.author.id] = user_aura.get(ctx.author.id, 1000) - 10
-    await ctx.send(f"{member.mention}, {random.choice(insultes)} (Aura restante : {user_aura[ctx.author.id]})")
+    user_aura[member.id] = user_aura.get(member.id, 1000) - 10
+    await ctx.send(f"{member.mention}, {random.choice(insultes)} (Aura restante : {user_aura[member.id]})")
 
 @bot.command()
-@cooldown(1, 1800, BucketType.user)  # Cooldown de 30 minutes par utilisateur
+@cooldown(1, 1800, BucketType.user)
 async def compliment(ctx, member: discord.Member = None):
     if member is None or member == ctx.author:
         await ctx.send("Tu ne peux pas te complimenter toi-même.")
@@ -112,13 +115,15 @@ async def compliment(ctx, member: discord.Member = None):
         "Tu es tellement talentueux(se), c’est impressionnant !"
     ]
 
-    user_aura[ctx.author.id] = user_aura.get(ctx.author.id, 1000) + 10
-    await ctx.send(f"{member.mention}, {random.choice(compliments)} (Aura actuelle : {user_aura[ctx.author.id]})")
+    user_aura[member.id] = user_aura.get(member.id, 1000) + 10
+    await ctx.send(f"{member.mention}, {random.choice(compliments)} (Aura actuelle : {user_aura[member.id]})")
 
 @bot.command()
-async def aura(ctx):
-    aura = user_aura.get(ctx.author.id, 1000)
-    await ctx.send(f"{ctx.author.mention}, votre aura est de {aura} points.")
+async def aura(ctx, member: discord.Member = None):
+    if member is None:
+        member = ctx.author
+    aura = user_aura.get(member.id, 1000)
+    await ctx.send(f"{member.mention}, votre aura est de {aura} points.")
 
 @bot.command()
 async def classement(ctx):
@@ -126,42 +131,98 @@ async def classement(ctx):
         await ctx.send("Personne n'a encore modifié son aura.")
         return
     classement = sorted(user_aura.items(), key=lambda x: x[1], reverse=True)
-    message = "**Classement des auras :**\n"
+    embed = discord.Embed(title="Classement des Auras", color=discord.Color.gold())
     for i, (user_id, aura) in enumerate(classement, start=1):
         user = await bot.fetch_user(user_id)
-        message += f"{i}. {user.name} : {aura} points\n"
-    await ctx.send(message)
+        embed.add_field(name=f"{i}. {user.name}", value=f"{aura} points", inline=False)
+    await ctx.send(embed=embed)
 
 @bot.command()
-async def commandes(ctx):
+@commands.is_owner()
+async def add(ctx, member: discord.Member, points: int):
+    user_aura[member.id] = user_aura.get(member.id, 1000) + points
+    await ctx.send(f"{member.mention} a maintenant {user_aura[member.id]} points d'aura.")
+
+@bot.command()
+async def pfc(ctx):
     embed = discord.Embed(
-        title="Liste des commandes disponibles",
-        description="Voici les commandes que vous pouvez utiliser avec ce bot :",
-        color=discord.Color.blue()
+        title="Pierre-Feuille-Ciseaux",
+        description="Cliquez pour rejoindre le jeu !",
+        color=discord.Color.green()
     )
-    embed.add_field(name="!insulte", value="Insulte un utilisateur.", inline=False)
-    embed.add_field(name="!compliment", value="Complimente un utilisateur.", inline=False)
-    embed.add_field(name="!citation", value="Affiche une citation aléatoire.", inline=False)
-    embed.add_field(name="!blague", value="Raconte une blague aléatoire.", inline=False)
-    embed.add_field(name="!qi", value="Affiche le QI d'un utilisateur.", inline=False)
-    embed.add_field(name="!pileouface", value="Lance une pièce.", inline=False)
-    embed.add_field(name="!lancerdé", value="Lance un dé.", inline=False)
-    embed.add_field(name="!ping", value="Affiche la latence du bot.", inline=False)
-    embed.add_field(name="!pub", value="Affiche notre pub. ^^ ", inline=False)
-    embed.add_field(name="!aura", value="Affiche votre aura.", inline=False)
-    embed.add_field(name="!classement", value="Affiche le classement des auras.", inline=False)
-    embed.set_footer(text="Tapez une commande pour l'utiliser.")
-    await ctx.send(embed=embed)
+    view = discord.ui.View()
+
+    async def join_game(interaction):
+        if interaction.user == ctx.author:
+            await interaction.response.send_message("Vous ne pouvez pas jouer contre vous-même !", ephemeral=True)
+            return
+
+        options = ["Pierre", "Feuille", "Ciseaux"]
+        player_choice = random.choice(options)
+        bot_choice = random.choice(options)
+        result = ""
+
+        if player_choice == bot_choice:
+            result = "Égalité !"
+        elif (player_choice == "Pierre" and bot_choice == "Ciseaux") or \
+             (player_choice == "Feuille" and bot_choice == "Pierre") or \
+             (player_choice == "Ciseaux" and bot_choice == "Feuille"):
+            result = f"Bravo {interaction.user.mention}, vous avez gagné !"
+            user_aura[interaction.user.id] += 20
+            user_aura[ctx.author.id] -= 20
+        else:
+            result = f"Dommage {interaction.user.mention}, vous avez perdu."
+            user_aura[interaction.user.id] -= 20
+            user_aura[ctx.author.id] += 20
+
+        await interaction.response.edit_message(
+            content=f"{ctx.author.mention} a choisi {player_choice}.\n" \
+                    f"{interaction.user.mention} a choisi {bot_choice}.\n" \
+                    f"{result}",
+            view=None
+        )
+
+    button = discord.ui.Button(label="Rejoindre", style=discord.ButtonStyle.blurple)
+    button.callback = join_game
+    view.add_item(button)
+
+    await ctx.send(embed=embed, view=view)
+
+@bot.command()
+async def qi(ctx):
+    qi = random.randint(50, 150)
+    user_qi[ctx.author.id] = qi
+    await ctx.send(f"{ctx.author.mention}, votre QI est évalué à {qi}.")
+
+@bot.command()
+async def citation(ctx):
+    citations = [
+        "La vie est un mystère qu'il faut vivre, et non un problème à résoudre. - Gandhi",
+        "Le seul vrai voyage, ce n’est pas d’aller vers d’autres paysages, mais d’avoir d’autres yeux. - Proust",
+        "Celui qui déplace une montagne commence par déplacer de petites pierres. - Confucius",
+        "Le bonheur n'est pas quelque chose de prêt à l'emploi. Il vient de vos propres actions. - Dalaï Lama"
+    ]
+    await ctx.send(random.choice(citations))
+
+@bot.command()
+async def blague(ctx):
+    blagues = [
+        "Pourquoi les éléphants ne bronzent-ils pas ? Parce qu’ils ont peur des coups de soleil !",
+        "Que dit un électricien quand il est content ? Je suis au courant !",
+        "Pourquoi est-ce que les plongeurs plongent toujours en arrière et jamais en avant ? Parce que sinon ils tombent dans le bateau !",
+        "Qu’est-ce qui est jaune et qui attend ? Jonathan !"
+    ]
+    await ctx.send(random.choice(blagues))
 
 @bot.command()
 async def ping(ctx):
     latency = round(bot.latency * 1000)
-    await ctx.send(f"Pong ! 🏓 Latence : {latency}ms")
+    await ctx.send(f"Pong ! \ud83c\udfd3 Latence : {latency}ms")
 
 @bot.command()
 @commands.is_owner()
 async def shutdown(ctx):
-    await ctx.send("Arrêt du bot... 🛑")
+    await ctx.send("Arrêt du bot... \ud83d\uded1")
     await bot.close()
 
 # Lancement du bot
