@@ -6,7 +6,6 @@ import os
 from dotenv import load_dotenv
 from flask import Flask
 from threading import Thread
-from difflib import get_close_matches
 import asyncio
 
 # Charger les variables d'environnement
@@ -26,7 +25,7 @@ user_qi = {}
 user_aura = {}
 command_list = [
     "insulte", "compliment", "citation", "blague", "qi", "commandes",
-    "pileouface", "lancerdé", "ping", "shutdown", "pub", "aura", "classement", "addaura", "pfc"
+    "pileouface", "lancerdé", "ping", "pub", "aura", "classement", "addaura", "pfc"
 ]
 
 # === Serveur Web pour garder le bot actif ===
@@ -65,14 +64,15 @@ async def on_command_error(ctx, error):
 # === Commandes du bot ===
 @bot.command()
 async def commandes(ctx):
-    await ctx.send(f"Commandes disponibles : {', '.join(command_list)}")
+    embed = discord.Embed(title="Liste des commandes disponibles", color=discord.Color.blue())
+    embed.description = "\n".join([f"`!{cmd}`" for cmd in command_list if cmd != "shutdown"])
+    await ctx.send(embed=embed)
 
 @bot.command()
-@cooldown(1, 1800, BucketType.user)  # Cooldown de 30 minutes par utilisateur
+@cooldown(1, 1800, BucketType.user)
 async def insulte(ctx, member: discord.Member = None):
     if member is None or member == ctx.author:
-        await ctx.send("Tu ne peux pas t'insulter toi-même.")
-        return
+        member = random.choice([m for m in ctx.guild.members if m != ctx.author and not m.bot])
 
     insultes = [
         "moulin à bite", "je te pisse dessus, cordialement.",
@@ -87,8 +87,7 @@ async def insulte(ctx, member: discord.Member = None):
 @cooldown(1, 1800, BucketType.user)
 async def compliment(ctx, member: discord.Member = None):
     if member is None or member == ctx.author:
-        await ctx.send("Tu ne peux pas te complimenter toi-même.")
-        return
+        member = random.choice([m for m in ctx.guild.members if m != ctx.author and not m.bot])
 
     compliments = [
         "Tu es brillant(e) comme une étoile dans la nuit.",
@@ -115,7 +114,7 @@ async def classement(ctx):
 
     classement = sorted(user_aura.items(), key=lambda x: x[1], reverse=True)
     embed = discord.Embed(title="Classement des Auras", color=discord.Color.gold())
-    for i, (user_id, aura) in enumerate(classement, start=1):
+    for i, (user_id, aura) in enumerate(classement[:10], start=1):
         user = await bot.fetch_user(user_id)
         embed.add_field(name=f"{i}. {user.name}", value=f"{aura} points", inline=False)
     await ctx.send(embed=embed)
@@ -155,36 +154,35 @@ async def pfc(ctx):
 
         async def process_game(self, interaction):
             if len(players) == 2:
-                choices = list(players.values())
+                player_ids = list(players.keys())
+                player_choices = list(players.values())
                 results = {"Pierre": "Ciseaux", "Ciseaux": "Feuille", "Feuille": "Pierre"}
 
-                player1, player2 = players.keys()
-                choice1, choice2 = choices
+                player1, player2 = player_ids
+                choice1, choice2 = player_choices
 
                 if choice1 == choice2:
                     result_message = "Égalité !"
                 elif results[choice1] == choice2:
-                    winner = await bot.fetch_user(player1)
-                    loser = await bot.fetch_user(player2)
-                    result_message = f"{winner.mention} a gagné contre {loser.mention} !"
-                    user_aura[player1] += 20
-                    user_aura[player2] -= 20
+                    winner, loser = player1, player2
+                    result_message = f"{(await bot.fetch_user(winner)).mention} a gagné contre {(await bot.fetch_user(loser)).mention} !"
+                    user_aura[winner] = user_aura.get(winner, 1000) + 20
+                    user_aura[loser] = user_aura.get(loser, 1000) - 20
                 else:
-                    winner = await bot.fetch_user(player2)
-                    loser = await bot.fetch_user(player1)
-                    result_message = f"{winner.mention} a gagné contre {loser.mention} !"
-                    user_aura[player2] += 20
-                    user_aura[player1] -= 20
+                    winner, loser = player2, player1
+                    result_message = f"{(await bot.fetch_user(winner)).mention} a gagné contre {(await bot.fetch_user(loser)).mention} !"
+                    user_aura[winner] = user_aura.get(winner, 1000) + 20
+                    user_aura[loser] = user_aura.get(loser, 1000) - 20
 
+                result_message += f"\n\nChoix : \n- {(await bot.fetch_user(player1)).mention} : {choice1}\n- {(await bot.fetch_user(player2)).mention} : {choice2}"
                 await interaction.message.edit(content=result_message, view=None)
 
     view = PFCView()
     await ctx.send(embed=embed, view=view)
 
 @bot.command()
-@commands.is_owner()
 async def addaura(ctx, member: discord.Member, points: int):
-    if ctx.author.id != 123456789012345678:  # Remplacez par l'ID de @kehbatman
+    if ctx.author.id != 911189303625924631:
         await ctx.send("Vous n'avez pas la permission d'ajouter de l'aura.")
         return
 
@@ -221,12 +219,6 @@ async def blague(ctx):
 async def ping(ctx):
     latency = round(bot.latency * 1000)
     await ctx.send(f"Pong ! 🏓 Latence : {latency}ms")
-
-@bot.command()
-@commands.is_owner()
-async def shutdown(ctx):
-    await ctx.send("Arrêt du bot... ⛔")
-    await bot.close()
 
 # Lancement du bot
 keep_alive()
