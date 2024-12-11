@@ -21,7 +21,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Variables globales
 user_qi = {}
-command_list = ["insulte", "compliment", "citation", "blague", "qi", "commandes", "pileouface", "lancerdé", "ping", "shutdown", "pub"]
+user_coins = {}
+command_list = ["insulte", "compliment", "citation", "blague", "qi", "commandes", "pileouface", "lancerdé", "ping", "shutdown", "pub", "coins", "donnercoins"]
 
 # === Serveur Web pour garder le bot actif ===
 app = Flask('')
@@ -45,7 +46,6 @@ async def on_command_error(ctx, error):
     elif isinstance(error, commands.BadArgument):
         await ctx.send("L'argument fourni n'est pas valide.")
     elif isinstance(error, commands.CommandNotFound):
-        # Suggérer une commande similaire
         command = ctx.invoked_with
         matches = get_close_matches(command, command_list, n=1, cutoff=0.6)
         if matches:
@@ -89,8 +89,6 @@ async def insulte(ctx, member: discord.Member = None):
         "t'es qu'un bouffeur de niglo",
         "Ton QI est tellement bas qu'il est en négatif.",
         "Tu es un vrai mystère... même pour les sciences modernes."
-        
-        
     ]
 
     if member is None:
@@ -176,6 +174,8 @@ async def commandes(ctx):
     embed.add_field(name="!citation", value="Affiche une citation aléatoire.", inline=False)
     embed.add_field(name="!blague", value="Raconte une blague aléatoire.", inline=False)
     embed.add_field(name="!qi", value="Affiche le QI d'un utilisateur.", inline=False)
+    embed.add_field(name="!coins", value="Affiche vos coins.", inline=False)
+    embed.add_field(name="!donnercoins", value="Donne des coins à un autre utilisateur.", inline=False)
     embed.add_field(name="!pileouface", value="Lance une pièce.", inline=False)
     embed.add_field(name="!lancerdé", value="Lance un dé.", inline=False)
     embed.add_field(name="!ping", value="Affiche la latence du bot.", inline=False)
@@ -197,77 +197,39 @@ async def ping(ctx):
     await ctx.send(f"Pong ! 🏓 Latence : {latency}ms")
 
 @bot.command()
+async def coins(ctx):
+    user_id = ctx.author.id
+    coins = user_coins.get(user_id, 0)
+    await ctx.send(f"{ctx.author.mention}, tu as {coins} coins.")
+
+@bot.command()
+async def donnercoins(ctx, member: discord.Member, amount: int):
+    if amount <= 0:
+        await ctx.send("Tu ne peux pas donner un nombre négatif de coins.")
+        return
+    
+    giver_id = ctx.author.id
+    receiver_id = member.id
+    
+    giver_coins = user_coins.get(giver_id, 0)
+    
+    if giver_coins < amount:
+        await ctx.send(f"{ctx.author.mention}, tu n'as pas assez de coins pour donner {amount} coins.")
+        return
+    
+    # Deduction des coins de l'expéditeur
+    user_coins[giver_id] = giver_coins - amount
+    
+    # Ajout des coins au destinataire
+    user_coins[receiver_id] = user_coins.get(receiver_id, 0) + amount
+    
+    await ctx.send(f"{ctx.author.mention} a donné {amount} coins à {member.mention}.")
+    
+@bot.command()
 @commands.is_owner()
 async def shutdown(ctx):
     await ctx.send("Arrêt du bot... 🛑")
     await bot.close()
-# Variable globale pour stocker les coins des utilisateurs
-user_coins = {}
-
-# Fonction pour ajouter des coins à un utilisateur
-def ajouter_coins(user_id, amount):
-    if user_id not in user_coins:
-        user_coins[user_id] = 0
-    user_coins[user_id] += amount
-
-# Fonction pour retirer des coins à un utilisateur
-def retirer_coins(user_id, amount):
-    if user_id not in user_coins or user_coins[user_id] < amount:
-        return False  # Si l'utilisateur n'a pas assez de coins
-    user_coins[user_id] -= amount
-    return True
-
-# Commande pour donner des coins à un utilisateur
-@bot.command()
-async def donnercoins(ctx, member: discord.Member, amount: int):
-    if amount <= 0:
-        await ctx.send("Le montant doit être supérieur à zéro.")
-        return
-
-    ajouter_coins(member.id, amount)
-    await ctx.send(f"{member.mention} a reçu {amount} coins ! 🎉")
-
-# Commande pour vérifier le solde des coins d'un utilisateur
-@bot.command()
-async def coins(ctx, member: discord.Member = None):
-    user_id = member.id if member else ctx.author.id
-    coins = user_coins.get(user_id, 0)
-    await ctx.send(f"{member.mention if member else ctx.author.mention} a {coins} coins.")*
-
-@bot.command()
-async def blague(ctx):
-    blagues = [
-        "Pourquoi les plongeurs plongent-ils toujours en arrière ? Parce que sinon ils tombent dans le bateau.",
-        "Que dit une imprimante dans l'eau ? J'ai papier !",
-        "Pourquoi les éoliennes sont-elles toujours contentes ? Parce qu'elles sont pleines d'énergie.",
-        "Quel est le comble pour un électricien ? De ne pas être au courant."
-    ]
-    message = await ctx.send(random.choice(blagues))
-    await message.add_reaction("😂")
-    
-    # Ajouter des coins après avoir lancé une blague
-    ajouter_coins(ctx.author.id, 10)  # 10 coins pour avoir lancé une blague
-    await ctx.send(f"{ctx.author.mention} a gagné 10 coins pour avoir lancé une blague ! 🎉")
-
-# Exemple d'achat d'un item virtuel
-@bot.command()
-async def acheter(ctx, item: str):
-    price = 0
-
-    # Définir le prix de certains items
-    if item.lower() == "rôle spécial":
-        price = 100  # Exemple : un rôle spécial coûte 100 coins
-    elif item.lower() == "insulte spéciale":
-        price = 50  # Une insulte spéciale coûte 50 coins
-    else:
-        await ctx.send("Désolé, cet item n'existe pas.")
-        return
-
-    if not retirer_coins(ctx.author.id, price):
-        await ctx.send(f"Désolé, vous n'avez pas assez de coins pour acheter {item}.")
-    else:
-        await ctx.send(f"Félicitations {ctx.author.mention}, vous avez acheté un {item} ! 🎉")
-
 
 # Lancement du bot
 keep_alive()
