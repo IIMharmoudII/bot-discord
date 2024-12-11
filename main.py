@@ -25,12 +25,6 @@ user_qi = {}
 user_coins = {}
 user_last_claim = {}  # Pour vérifier si l'utilisateur a réclamé ses coins journaliers
 command_list = ["insulte", "compliment", "citation", "blague", "qi", "commandes", "pileouface", "lancerdé", "ping", "shutdown", "pub", "coins", "donnercoins", "journalier", "classement", "boutique"]
-role_shop = {
-    "Thalix": 15000,
-    "Ragnar": 25000,
-    "Lynther": 35000,
-    "Orakaï": 45000
-}
 
 # === Serveur Web pour garder le bot actif ===
 app = Flask('')
@@ -45,25 +39,6 @@ def run():
 def keep_alive():
     t = Thread(target=run)
     t.start()
-# === Gestion des erreurs globales ===
-@bot.event
-async def on_command_error(ctx, error):
-    if isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send("Il manque un argument requis pour cette commande.")
-    elif isinstance(error, commands.BadArgument):
-        await ctx.send("L'argument fourni n'est pas valide.")
-    elif isinstance(error, commands.CommandNotFound):
-        command = ctx.invoked_with
-        matches = get_close_matches(command, command_list, n=1, cutoff=0.6)
-        if matches:
-            await ctx.send(f"Cette commande n'existe pas. Peut-être vouliez-vous dire `!{matches[0]}` ?")
-        else:
-            await ctx.send("Cette commande n'existe pas. Tapez `!commandes` pour voir les commandes disponibles.")
-    elif isinstance(error, commands.MissingPermissions):
-        await ctx.send("Vous n'avez pas les permissions nécessaires pour exécuter cette commande.")
-    else:
-        await ctx.send("Une erreur inattendue s'est produite.")
-        raise error
 
 # === Commandes du bot ===
 
@@ -81,6 +56,41 @@ async def pub(ctx):
         "🏯   https://discord.gg/sydneyfr"
     )
     await ctx.send(message)
+
+@bot.command()
+async def ping(ctx):
+    await ctx.send(f"Pong ! Latence: {round(bot.latency * 1000)}ms")
+
+@bot.command()
+async def pileouface(ctx):
+    result = random.choice(["Face", "Pile"])
+    await ctx.send(f"Résultat: {result}")
+
+@bot.command()
+async def lancerdé(ctx):
+    roll = random.randint(1, 6)
+    await ctx.send(f"Tu as lancé un {roll}.")
+
+@bot.command()
+async def citation(ctx):
+    citations = [
+        "L'avenir appartient à ceux qui croient en la beauté de leurs rêves. - Eleanor Roosevelt",
+        "Ce n'est pas la taille du chien dans la lutte, mais la taille de la lutte dans le chien. - Mark Twain",
+        "Ne pleure pas parce que c'est fini, souris parce que ça a eu lieu. - Dr. Seuss",
+        "La vie est ce qui arrive quand on est occupé à faire d'autres projets. - John Lennon"
+    ]
+    await ctx.send(random.choice(citations))
+
+@bot.command()
+async def commandes(ctx):
+    embed = discord.Embed(
+        title="Liste des Commandes",
+        description="Voici les commandes disponibles sur ce serveur !",
+        color=discord.Color.blue()
+    )
+    for command in command_list:
+        embed.add_field(name=f"!{command}", value=f"Exécuter la commande `{command}`.", inline=False)
+    await ctx.send(embed=embed)
 
 @bot.command()
 async def insulte(ctx, member: discord.Member = None):
@@ -142,24 +152,6 @@ async def compliment(ctx, member: discord.Member = None):
     await ctx.send(f"{member.mention}, {random.choice(compliments)}")
 
 @bot.command()
-async def blague(ctx):
-    blagues = [
-        "Pourquoi les plongeurs plongent-ils toujours en arrière ? Parce que sinon ils tombent dans le bateau.",
-        "Que dit une imprimante dans l'eau ? J'ai papier !",
-        "Pourquoi les éoliennes sont-elles toujours contentes ? Parce qu'elles sont pleines d'énergie.",
-        "Quel est le comble pour un électricien ? De ne pas être au courant."
-    ]
-    message = await ctx.send(random.choice(blagues))
-    await message.add_reaction("😂")
-
-@bot.command()
-async def qi(ctx, member: discord.Member = None):
-    user_id = member.id if member else ctx.author.id
-    if user_id not in user_qi:
-        user_qi[user_id] = random.randint(50, 150)
-    await ctx.send(f"Le QI de {member.mention if member else ctx.author.mention} est de {user_qi[user_id]}.")
-
-@bot.command()
 async def journalier(ctx):
     user_id = ctx.author.id
     current_time = datetime.now()
@@ -181,6 +173,19 @@ async def classement(ctx):
     sorted_users = sorted(user_coins.items(), key=lambda x: x[1], reverse=True)
     leaderboard = "\n".join([f"{ctx.guild.get_member(user_id).name}: {coins} coins" for user_id, coins in sorted_users])
     await ctx.send(f"Classement des utilisateurs :\n{leaderboard}")
+
+@bot.command()
+async def coins(ctx):
+    user_id = ctx.author.id
+    coins = user_coins.get(user_id, 0)
+    await ctx.send(f"{ctx.author.mention}, tu as actuellement {coins} coins.")
+
+role_shop = {
+    "Thalix": 15000,
+    "Ragnar": 25000,
+    "Lynther": 35000,
+    "Orakaï": 45000
+}
 
 @bot.command()
 async def boutique(ctx):
@@ -214,3 +219,4 @@ keep_alive()
 
 # Lancer le bot
 bot.run(TOKEN)
+
