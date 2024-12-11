@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 from flask import Flask
 from threading import Thread
 from difflib import get_close_matches
-import time
+import asyncio
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -26,7 +26,7 @@ user_qi = {}
 user_aura = {}
 command_list = [
     "insulte", "compliment", "citation", "blague", "qi", "commandes",
-    "pileouface", "lancerdé", "ping", "shutdown", "pub", "aura", "classement", "add", "pfc"
+    "pileouface", "lancerdé", "ping", "shutdown", "pub", "aura", "classement", "addaura", "pfc"
 ]
 
 # === Serveur Web pour garder le bot actif ===
@@ -51,18 +51,11 @@ async def on_command_error(ctx, error):
     elif isinstance(error, commands.BadArgument):
         await ctx.send("L'argument fourni n'est pas valide.")
     elif isinstance(error, commands.CommandNotFound):
-        command = ctx.invoked_with
-        matches = get_close_matches(command, command_list, n=1, cutoff=0.6)
-        if matches:
-            view = discord.ui.View()
-            button = discord.ui.Button(label=f"Utiliser !{matches[0]}", style=discord.ButtonStyle.primary)
-            button.callback = lambda interaction: ctx.invoke(bot.get_command(matches[0]))
-            view.add_item(button)
-            await ctx.send("Cette commande n'existe pas.", view=view)
-        else:
-            await ctx.send("Cette commande n'existe pas. Tapez `!commandes` pour voir les commandes disponibles.")
+        await ctx.send("Cette commande n'existe pas. Tapez `!commandes` pour voir les commandes disponibles.")
     elif isinstance(error, commands.CommandOnCooldown):
-        await ctx.send(f"Cette commande est en cooldown. Réessayez dans {error.retry_after:.0f} secondes.")
+        minutes = int(error.retry_after // 60)
+        seconds = int(error.retry_after % 60)
+        await ctx.send(f"Cette commande est en cooldown. Réessayez dans {minutes} minutes et {seconds} secondes.")
     elif isinstance(error, commands.MissingPermissions):
         await ctx.send("Vous n'avez pas les permissions nécessaires pour exécuter cette commande.")
     else:
@@ -71,19 +64,8 @@ async def on_command_error(ctx, error):
 
 # === Commandes du bot ===
 @bot.command()
-async def pub(ctx):
-    message = (
-        "\U00010243\U0001fab4 \ud83c\udf80  Sydney \ud83e\uddf8 #\u044f  est un Nouveau serveur  \ud83c\udf80\n\n"
-        "\ud83c\udf93   Avec une communauté safe\n"
-        "\ud83c\udff0   Où faire de nouvelles rencontres\n"
-        "\ud83c\udfc6   Gagne des rôles en étant Actif sur le serveur\n"
-        "\ud83c\udfb2   Du Gambling et pleins d'autres jeux\n"
-        "\ud83c\udf89   Pleins d'évènements qui arrive\n"
-        "\u2728   Un rôle OG pour le début du serveur !\n\n"
-        "彡   \ud83c\udf97\ufe0f Qu'attends-tu pour rejoindre !\n\n"
-        "\ud83c\udfe2   https://discord.gg/sydneyfr"
-    )
-    await ctx.send(message)
+async def commandes(ctx):
+    await ctx.send(f"Commandes disponibles : {', '.join(command_list)}")
 
 @bot.command()
 @cooldown(1, 1800, BucketType.user)  # Cooldown de 30 minutes par utilisateur
@@ -127,9 +109,10 @@ async def aura(ctx, member: discord.Member = None):
 
 @bot.command()
 async def classement(ctx):
-    if not user_aura:
-        await ctx.send("Personne n'a encore modifié son aura.")
-        return
+    for member in ctx.guild.members:
+        if member.id not in user_aura:
+            user_aura[member.id] = 1000
+
     classement = sorted(user_aura.items(), key=lambda x: x[1], reverse=True)
     embed = discord.Embed(title="Classement des Auras", color=discord.Color.gold())
     for i, (user_id, aura) in enumerate(classement, start=1):
@@ -138,55 +121,75 @@ async def classement(ctx):
     await ctx.send(embed=embed)
 
 @bot.command()
-@commands.is_owner()
-async def add(ctx, member: discord.Member, points: int):
-    user_aura[member.id] = user_aura.get(member.id, 1000) + points
-    await ctx.send(f"{member.mention} a maintenant {user_aura[member.id]} points d'aura.")
-
-@bot.command()
 async def pfc(ctx):
+    players = {}
+
     embed = discord.Embed(
         title="Pierre-Feuille-Ciseaux",
-        description="Cliquez pour rejoindre le jeu !",
+        description="Cliquez sur un bouton pour faire votre choix !",
         color=discord.Color.green()
     )
-    view = discord.ui.View()
 
-    async def join_game(interaction):
-        if interaction.user == ctx.author:
-            await interaction.response.send_message("Vous ne pouvez pas jouer contre vous-même !", ephemeral=True)
-            return
+    class PFCView(discord.ui.View):
+        def __init__(self, timeout=15):
+            super().__init__(timeout=timeout)
 
-        options = ["Pierre", "Feuille", "Ciseaux"]
-        player_choice = random.choice(options)
-        bot_choice = random.choice(options)
-        result = ""
+        async def on_timeout(self):
+            if len(players) < 2:
+                await ctx.send("Le jeu a été annulé faute de participants.")
 
-        if player_choice == bot_choice:
-            result = "Égalité !"
-        elif (player_choice == "Pierre" and bot_choice == "Ciseaux") or \
-             (player_choice == "Feuille" and bot_choice == "Pierre") or \
-             (player_choice == "Ciseaux" and bot_choice == "Feuille"):
-            result = f"Bravo {interaction.user.mention}, vous avez gagné !"
-            user_aura[interaction.user.id] += 20
-            user_aura[ctx.author.id] -= 20
-        else:
-            result = f"Dommage {interaction.user.mention}, vous avez perdu."
-            user_aura[interaction.user.id] -= 20
-            user_aura[ctx.author.id] += 20
+        @discord.ui.button(label="Pierre", style=discord.ButtonStyle.primary)
+        async def pierre(self, interaction: discord.Interaction, button: discord.ui.Button):
+            players[interaction.user.id] = "Pierre"
+            await self.process_game(interaction)
 
-        await interaction.response.edit_message(
-            content=f"{ctx.author.mention} a choisi {player_choice}.\n" \
-                    f"{interaction.user.mention} a choisi {bot_choice}.\n" \
-                    f"{result}",
-            view=None
-        )
+        @discord.ui.button(label="Feuille", style=discord.ButtonStyle.success)
+        async def feuille(self, interaction: discord.Interaction, button: discord.ui.Button):
+            players[interaction.user.id] = "Feuille"
+            await self.process_game(interaction)
 
-    button = discord.ui.Button(label="Rejoindre", style=discord.ButtonStyle.blurple)
-    button.callback = join_game
-    view.add_item(button)
+        @discord.ui.button(label="Ciseaux", style=discord.ButtonStyle.danger)
+        async def ciseaux(self, interaction: discord.Interaction, button: discord.ui.Button):
+            players[interaction.user.id] = "Ciseaux"
+            await self.process_game(interaction)
 
+        async def process_game(self, interaction):
+            if len(players) == 2:
+                choices = list(players.values())
+                results = {"Pierre": "Ciseaux", "Ciseaux": "Feuille", "Feuille": "Pierre"}
+
+                player1, player2 = players.keys()
+                choice1, choice2 = choices
+
+                if choice1 == choice2:
+                    result_message = "Égalité !"
+                elif results[choice1] == choice2:
+                    winner = await bot.fetch_user(player1)
+                    loser = await bot.fetch_user(player2)
+                    result_message = f"{winner.mention} a gagné contre {loser.mention} !"
+                    user_aura[player1] += 20
+                    user_aura[player2] -= 20
+                else:
+                    winner = await bot.fetch_user(player2)
+                    loser = await bot.fetch_user(player1)
+                    result_message = f"{winner.mention} a gagné contre {loser.mention} !"
+                    user_aura[player2] += 20
+                    user_aura[player1] -= 20
+
+                await interaction.message.edit(content=result_message, view=None)
+
+    view = PFCView()
     await ctx.send(embed=embed, view=view)
+
+@bot.command()
+@commands.is_owner()
+async def addaura(ctx, member: discord.Member, points: int):
+    if ctx.author.id != 123456789012345678:  # Remplacez par l'ID de @kehbatman
+        await ctx.send("Vous n'avez pas la permission d'ajouter de l'aura.")
+        return
+
+    user_aura[member.id] = user_aura.get(member.id, 1000) + points
+    await ctx.send(f"{member.mention} a maintenant {user_aura[member.id]} points d'aura.")
 
 @bot.command()
 async def qi(ctx):
@@ -217,12 +220,12 @@ async def blague(ctx):
 @bot.command()
 async def ping(ctx):
     latency = round(bot.latency * 1000)
-    await ctx.send(f"Pong ! \ud83c\udfd3 Latence : {latency}ms")
+    await ctx.send(f"Pong ! 🏓 Latence : {latency}ms")
 
 @bot.command()
 @commands.is_owner()
 async def shutdown(ctx):
-    await ctx.send("Arrêt du bot... \ud83d\uded1")
+    await ctx.send("Arrêt du bot... ⛔")
     await bot.close()
 
 # Lancement du bot
