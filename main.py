@@ -3,10 +3,8 @@ from discord.ext import commands, tasks
 import random
 import os
 from dotenv import load_dotenv
-from flask import Flask
-from threading import Thread
-from difflib import get_close_matches
 from datetime import datetime, timedelta
+from collections import defaultdict
 
 # Charger les variables d'environnement
 load_dotenv()
@@ -21,10 +19,10 @@ intents.members = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Variables globales
-user_qi = {}
-user_coins = {}
+user_qi = defaultdict(int)
+user_coins = defaultdict(int)
 user_last_claim = {}  # Pour vérifier si l'utilisateur a réclamé ses coins journaliers
-command_list = ["insulte", "compliment", "citation", "blague", "qi", "commandes", "pileouface", "lancerdé", "ping", "shutdown", "pub", "coins", "donnercoins", "journalier", "classement", "boutique"]
+user_last_action = defaultdict(lambda: timedelta(seconds=-30))  # Pour gérer les cooldowns
 
 # === Serveur Web pour garder le bot actif ===
 app = Flask('')
@@ -39,9 +37,6 @@ def run():
 def keep_alive():
     t = Thread(target=run)
     t.start()
-
-# === Commandes du bot ===
-
 @bot.command()
 async def pub(ctx):
     message = (
@@ -88,6 +83,7 @@ async def commandes(ctx):
         description="Voici les commandes disponibles sur ce serveur !",
         color=discord.Color.blue()
     )
+    command_list = ["insulte", "compliment", "citation", "blague", "qi", "commandes", "pileouface", "lancerdé", "ping", "pub", "coins", "donnercoins", "journalier", "classement", "boutique"]
     for command in command_list:
         embed.add_field(name=f"!{command}", value=f"Exécuter la commande `{command}`.", inline=False)
     await ctx.send(embed=embed)
@@ -95,17 +91,10 @@ async def commandes(ctx):
 @bot.command()
 async def insulte(ctx, member: discord.Member = None):
     insultes = [
-        "moulin à bite",
-        "je te pisse dessus, cordialement.",
-        "tu es moche, sacré glope.",
-        "tu n'es qu'un manche canette.",
-        "glope saucisse",
-        "espece de sac a foutre",
-        "t'es qu'un rammasi de fond d'capote",
-        "t'es un gluant",
-        "t'es qu'un bouffeur de niglo",
-        "Ton QI est tellement bas qu'il est en négatif.",
-        "Tu es un vrai mystère... même pour les sciences modernes."
+        "moulin à bite", "je te pisse dessus, cordialement.", "tu es moche, sacré glope.",
+        "tu n'es qu'un manche canette.", "glope saucisse", "espece de sac a foutre",
+        "t'es qu'un rammasi de fond d'capote", "t'es un gluant", "t'es qu'un bouffeur de niglo",
+        "Ton QI est tellement bas qu'il est en négatif.", "Tu es un vrai mystère... même pour les sciences modernes."
     ]
 
     if member is None:
@@ -150,7 +139,21 @@ async def compliment(ctx, member: discord.Member = None):
         return
 
     await ctx.send(f"{member.mention}, {random.choice(compliments)}")
+    # Récompense pour compliment
+    user_coins[ctx.author.id] += 10
 
+@bot.command()
+async def blague(ctx):
+    blagues = [
+        "Pourquoi les plongeurs plongent-ils toujours en arrière et jamais en avant ? Parce que sinon ils tombent toujours dans le bateau.",
+        "Quel est le comble pour un électricien ? De ne pas être au courant.",
+        "Pourquoi les squelettes ne se battent-ils jamais entre eux ? Parce qu'ils n'ont pas le cran.",
+        "C'est l'histoire d'un homme qui rentre dans un bar... mais il se cogne la tête et il tombe !",
+        "Pourquoi les poissons détestent l'ordinateur ? Parce qu'ils ont peur du net."
+    ]
+    await ctx.send(random.choice(blagues))
+    # Récompense pour blague
+    user_coins[ctx.author.id] += 10
 @bot.command()
 async def journalier(ctx):
     user_id = ctx.author.id
@@ -164,7 +167,7 @@ async def journalier(ctx):
             return
     
     # Récompense journalière
-    user_coins[user_id] = user_coins.get(user_id, 0) + 500
+    user_coins[user_id] += 500
     user_last_claim[user_id] = current_time
     await ctx.send(f"Félicitations {ctx.author.mention}, tu as reçu 500 coins pour ta réclamation journalière !")
 
@@ -180,15 +183,15 @@ async def coins(ctx):
     coins = user_coins.get(user_id, 0)
     await ctx.send(f"{ctx.author.mention}, tu as actuellement {coins} coins.")
 
-role_shop = {
-    "Thalix": 15000,
-    "Ragnar": 25000,
-    "Lynther": 35000,
-    "Orakaï": 45000
-}
-
 @bot.command()
 async def boutique(ctx):
+    role_shop = {
+        "Thalix": 15000,
+        "Ragnar": 25000,
+        "Lynther": 35000,
+        "Orakaï": 45000
+    }
+
     embed = discord.Embed(title="Boutique des Rôles", description="Achetez des rôles en utilisant vos coins !", color=discord.Color.green())
     for role, price in role_shop.items():
         embed.add_field(name=role, value=f"{price} coins", inline=False)
@@ -196,27 +199,40 @@ async def boutique(ctx):
 
 @bot.command()
 async def acheter(ctx, role_name: str):
-    if role_name not in role_shop:
-        await ctx.send("Ce rôle n'existe pas dans la boutique.")
-        return
-
-    price = role_shop[role_name]
+    role_shop = {
+        "Thalix": 15000,
+        "Ragnar": 25000,
+        "Lynther": 35000,
     user_id = ctx.author.id
-    user_coins_count = user_coins.get(user_id, 0)
+    coins = user_coins.get(user_id, 0)
 
-    if user_coins_count < price:
-        await ctx.send(f"Tu n'as pas assez de coins pour acheter ce rôle. Il te manque {price - user_coins_count} coins.")
+    if role_name not in role_shop:
+        await ctx.send(f"Le rôle '{role_name}' n'est pas disponible dans la boutique.")
         return
 
-    # Deduction des coins et attribution du rôle
-    user_coins[user_id] -= price
+    role_price = role_shop[role_name]
+    if coins < role_price:
+        await ctx.send(f"Désolé {ctx.author.mention}, tu n'as pas assez de coins pour acheter ce rôle.")
+        return
+
+    # Acheter le rôle
+    user_coins[user_id] -= role_price
     role = discord.utils.get(ctx.guild.roles, name=role_name)
-    await ctx.author.add_roles(role)
-    await ctx.send(f"Félicitations {ctx.author.mention}, tu as acheté le rôle {role_name} !")
+    if role:
+        await ctx.author.add_roles(role)
+        await ctx.send(f"{ctx.author.mention}, tu as acheté le rôle {role_name} pour {role_price} coins !")
+    else:
+        await ctx.send(f"Le rôle '{role_name}' n'existe pas sur ce serveur.")
 
-# Garder le bot actif
-keep_alive()
+@bot.command()
+async def addcoin(ctx, user: discord.Member, amount: int):
+    if ctx.author.id != 911189303625924631:  # Remplacer par l'ID de l'utilisateur autorisé
+        await ctx.send("Désolé, tu n'as pas l'autorisation d'exécuter cette commande.")
+        return
 
-# Lancer le bot
-bot.run(TOKEN)
+    user_coins[user.id] += amount
+    await ctx.send(f"{user.mention} a reçu {amount} coins. Ils ont maintenant {user_coins[user.id]} coins.")
+
+    keep_alive()  # Maintenir le bot en ligne avec le serveur Flask
+    bot.run(TOKEN)  # Lancer le bot avec ton token
 
