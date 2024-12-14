@@ -81,7 +81,7 @@ async def insulte(ctx, member: discord.Member = None):
         "moulin à bite",
         "je te pisse dessus, cordialement.",
         "tu es moche, sacré glope.",
-        "tu n'es qu'un manche canette.",
+        "tu n'es qu'un mange canette.",
         "glope saucisse",
         "espece de sac a foutre",
         "t'es qu'un rammasi de fond d'capote",
