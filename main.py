@@ -21,7 +21,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 
 # Variables globales
 user_qi = {}
-command_list = ["insulte", "compliment", "citation", "blague", "qi", "commandes", "pileouface", "lancerdé", "ping", "shutdown", "pub"]
+command_list = ["insulte", "compliment", "citation", "blague", "qi", "commandes", "pileouface", "lancerdé", "ping", "shutdown", "pub", "annonce"]
 
 # === Serveur Web pour garder le bot actif ===
 app = Flask('')
@@ -75,12 +75,19 @@ async def pub(ctx):
 
 彡 🎗️ Qu'attends-tu pour rejoindre !  
 🏯   https://discord.gg/sydneyfr 
-
-||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​||||​|||||||||​||||​||||​||||||​||||​||||​||||​||||​||||​|||
-
-https://media.discordapp.net/attachments/1183871422049820758/1312024330812526662/IMG_3324.gif?ex=674afd60&is=6749abe0&hm=a8a69e96c61c2d6cadbb1dc5b63bc269da5d6df6f65adffb4fd772d83e9f4a7e&
 """
     await ctx.send(message)
+
+@bot.command()
+async def annonce(ctx, *, annonce_message: str):
+    """
+    Cette commande permet à un administrateur de poster une annonce.
+    """
+    if ctx.author.guild_permissions.administrator:
+        channel = ctx.channel  # Le message sera envoyé dans le même canal
+        await channel.send(f"📢 **Annonce de {ctx.author.display_name}:**\n{annonce_message}")
+    else:
+        await ctx.send("Désolé, vous n'avez pas les permissions nécessaires pour utiliser cette commande.")
 
 @bot.command()
 async def insulte(ctx, member: discord.Member = None):
@@ -96,8 +103,6 @@ async def insulte(ctx, member: discord.Member = None):
         "t'es qu'un bouffeur de niglo",
         "Ton QI est tellement bas qu'il est en négatif.",
         "Tu es un vrai mystère... même pour les sciences modernes."
-        
-        
     ]
 
     if member is None:
@@ -187,6 +192,7 @@ async def commandes(ctx):
     embed.add_field(name="!lancerdé", value="Lance un dé.", inline=False)
     embed.add_field(name="!ping", value="Affiche la latence du bot.", inline=False)
     embed.add_field(name="!pub", value="Affiche notre pub. ^^ ", inline=False)
+    embed.add_field(name="!annonce", value="Affiche une annonce si vous êtes administrateur.", inline=False)
     embed.set_footer(text="Tapez une commande pour l'utiliser.")
     await ctx.send(embed=embed)
 
