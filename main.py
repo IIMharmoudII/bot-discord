@@ -63,7 +63,6 @@ async def on_command_error(ctx, error):
 @bot.command()
 async def pub(ctx):
     message = """
-||<@&1312849067084091423> ||  
 
 𓂃ꕤ 🎀  Sydney 🧸 #ғя  est un Nouveau serveur  🎀
 
