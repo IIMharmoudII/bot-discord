@@ -79,15 +79,20 @@ async def pub(ctx):
     await ctx.send(message)
 
 @bot.command()
-async def annonce(ctx, *, annonce_message: str):
-    """
-    Cette commande permet à un administrateur de poster une annonce.
-    """
-    if ctx.author.guild_permissions.administrator:
-        channel = ctx.channel  # Le message sera envoyé dans le même canal
-        await channel.send(f"📢 **Annonce de {ctx.author.display_name}:**\n{annonce_message}")
-    else:
-        await ctx.send("Désolé, vous n'avez pas les permissions nécessaires pour utiliser cette commande.")
+async def annonce(ctx, *, message: str):
+    # Création de l'embed
+    embed = discord.Embed(
+        title="📢 Annonce",
+        description=message,  # Le message d'annonce
+        color=discord.Color.purple()  # Couleur du texte (rose/violet)
+    )
+    
+    # Ajouter une barre de couleur à gauche
+    embed.add_field(name="**✨ Annonce**", value=" ", inline=False)
+    embed.set_footer(text=f"Annonce de {ctx.author.name}", icon_url=ctx.author.avatar.url)
+    
+    # Envoi du message
+    await ctx.send(embed=embed)
 
 @bot.command()
 async def insulte(ctx, member: discord.Member = None):
