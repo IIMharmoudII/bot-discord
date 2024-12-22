@@ -101,7 +101,6 @@ async def on_message(message):
                 await message.channel.send(response)
             else:
                 print("Erreur : Les salons mentionnés n'existent pas ou ne sont pas accessibles.")
-                        break  # Stopper la boucle après avoir traité un embed correspondant
 
     # Continuer à traiter les commandes
     await bot.process_commands(message)
