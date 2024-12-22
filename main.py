@@ -59,6 +59,9 @@ async def on_command_error(ctx, error):
         raise error
 
 # ===  Gestion des tickets de partenariat ===
+# === Variables globales ===
+already_replied = set()  # Garde une trace des tickets où le bot a déjà répondu
+
 @bot.event
 async def on_message(message):
     # ID de la catégorie de support
@@ -66,22 +69,33 @@ async def on_message(message):
     conditions_channel_id = 1312830314653155479
     pub_channel_id = 1312850532293017631
 
-    # Vérifier si le message est dans un canal de la catégorie "🔖 ➜ Support 24H/24"
+    # Vérifier si le message est dans un canal de la catégorie support
     if message.channel.category_id == support_category_id:
-        # Vérifier si un bot a envoyé un message avec "Demande de partenariat"
+        # Vérifier si le message contient "Demande de partenariat" envoyé par un bot
         if message.author.bot and "Demande de partenariat" in message.content:
-            conditions_channel = bot.get_channel(conditions_channel_id)
-            pub_channel = bot.get_channel(pub_channel_id)
+            # Vérifier si le bot a déjà répondu dans ce ticket
+            if message.channel.id not in already_replied:
+                # Marquer ce ticket comme traité
+                already_replied.add(message.channel.id)
 
-            # Envoyer une réponse spécifique
-            response = (
-                f"Bonjour {message.author.mention}, merci d'avoir ouvert un ticket de partenariat !\n"
-                f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous respectez les conditions, envoyez votre pub dans {pub_channel.mention}.\n"
-                f"Ajoutez les captures d'écran comme preuve de la pub disponible dans notre salon. Un administrateur vous pingera dès que votre pub sera ajoutée."
-            )
-            await message.channel.send(response)
+                # Obtenir les canaux nécessaires
+                conditions_channel = bot.get_channel(conditions_channel_id)
+                pub_channel = bot.get_channel(pub_channel_id)
 
-    # Traiter les commandes normalement
+                # Récupérer l'auteur du ticket (mentionné par Draft Bot)
+                opener = message.mentions[0] if message.mentions else "utilisateur inconnu"
+
+                # Construire la réponse
+                response = (
+                    f"Bonjour {opener}, merci d'avoir ouvert un ticket de partenariat !\n"
+                    f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous respectez les conditions, "
+                    f"envoyez votre pub dans {pub_channel.mention}.\n"
+                    f"Ajoutez les captures d'écran comme preuve de la pub disponible dans notre salon. Un administrateur vous pingera dès que votre pub sera ajoutée."
+                )
+                # Envoyer la réponse dans le ticket
+                await message.channel.send(response)
+
+    # Continuer à traiter les commandes
     await bot.process_commands(message)
 
 # === Commandes du bot ===
