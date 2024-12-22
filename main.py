@@ -298,90 +298,143 @@ async def on_message(message):
         )
 
     await bot.process_commands(message)
+# Role IDs (replace with actual IDs from your server)
+ROLE_IDS = {
+    "Owner": 1312432485472276490,
+    "Co-Owner": 1312432486604734494,
+    "Perm_V": 1312432490392326305,
+    "GS": 1312427749981552690,
+    "Modération": 1312427543843835914,
+    "GM": 1312426671152042055
+}
 
-# Fonction pour enregistrer une sanction dans le salon 🚫・sanctions
-async def log_sanction(action, reason, duration, user):
-    channel = bot.get_channel(1312414751304978462)  # ID du salon 🚫・sanctions
-    embed = discord.Embed(
-        title="Sanction appliquée",
-        color=discord.Color.red()
-    )
-    embed.add_field(name="Action", value=action, inline=False)
-    embed.add_field(name="Raison", value=reason, inline=False)
-    embed.add_field(name="Durée", value=f"{duration} minutes", inline=False)
-    embed.add_field(name="Utilisateur", value=user.name, inline=False)
-    await channel.send(embed=embed)
+# Channel IDs
+SANCTIONS_CHANNEL = 1312414751304978462
 
-# Gestion des messages dans 📦・boîte-à-idées
-@bot.event
-async def on_message(message):
-    if message.channel.id == 1312415131489272000:  # ID du salon 📦・boîte-à-idées
-        await message.add_reaction("✅")
-        await message.add_reaction("❌")
+# Warn storage
+warns = {}
 
-        # Crée un fil pour le message
-        thread = await message.create_thread(name=f"Discussion : {message.author.name}")
-        await thread.send(f"Qu'en pensez-vous ?")
-    await bot.process_commands(message)
+# Helper function to log sanctions
+def log_sanction(guild, user, action, reason, duration=None):
+    channel = guild.get_channel(SANCTIONS_CHANNEL)
+    if channel:
+        embed = discord.Embed(title="Sanction appliquée", color=discord.Color.red())
+        embed.add_field(name="Action", value=action, inline=False)
+        embed.add_field(name="Utilisateur", value=user.mention, inline=False)
+        embed.add_field(name="Raison", value=reason, inline=False)
+        if duration:
+            embed.add_field(name="Durée", value=str(duration), inline=False)
+        embed.timestamp = datetime.utcnow()
+        return channel.send(embed=embed)
 
-# Commande tempmute
+# Check reason decorator
+def requires_reason():
+    async def predicate(ctx):
+        if len(ctx.message.content.split()) < 3:
+            await ctx.send("❌ Vous devez fournir une raison pour cette action.")
+            return False
+        return True
+    return commands.check(predicate)
+
+# Command: tempmute
 @bot.command()
-async def tempmute(ctx, member: discord.Member, duration: int, *, reason="Non spécifié"):
-    role = discord.utils.get(ctx.guild.roles, name="Muted")
-    if not role:
-        role = await ctx.guild.create_role(name="Muted")
+@requires_reason()
+async def tempmute(ctx, member: discord.Member, duration: int, *, reason):
+    role = ctx.author.top_role
+    if role.id not in ROLE_IDS.values():
+        return await ctx.send("❌ Vous n'avez pas la permission d'utiliser cette commande.")
+
+    # Role-based limits
+    max_durations = {
+        ROLE_IDS['Modération']: 40,
+        ROLE_IDS['GM']: 60,
+        ROLE_IDS['GS']: 30,
+        ROLE_IDS['Owner']: 10
+    }
+
+    max_duration = max_durations.get(role.id, 0)
+    if duration > max_duration:
+        return await ctx.send(f"❌ Vous ne pouvez pas mute pendant plus de {max_duration} minutes.")
+
+    # Apply mute
+    mute_role = discord.utils.get(ctx.guild.roles, name="Muted")
+    if not mute_role:
+        mute_role = await ctx.guild.create_role(name="Muted")
         for channel in ctx.guild.channels:
-            await channel.set_permissions(role, send_messages=False, speak=False)
+            await channel.set_permissions(mute_role, send_messages=False, speak=False)
 
-    await member.add_roles(role)
-    await ctx.send(f"{member.mention} a été mute pour {duration} minutes. Raison : {reason}")
+    await member.add_roles(mute_role, reason=reason)
+    await ctx.send(f"✅ {member.mention} a été mute pour {duration} minutes.")
 
-    # Log la sanction
-    await log_sanction("Mute", reason, duration, member)
+    # Log action
+    await log_sanction(ctx.guild, member, "Tempmute", reason, duration)
 
-    # Unmute après la durée
+    # Schedule unmute
     await asyncio.sleep(duration * 60)
-    await member.remove_roles(role)
-    await ctx.send(f"{member.mention} a été unmute (durée écoulée).")
+    await member.remove_roles(mute_role, reason="Fin du mute")
 
-# Commande warn
+# Command: warn
 @bot.command()
-async def warn(ctx, member: discord.Member, *, reason="Non spécifié"):
-    await ctx.send(f"{member.mention} a reçu un avertissement. Raison : {reason}")
+@requires_reason()
+async def warn(ctx, member: discord.Member, *, reason):
+    if member.id not in warns:
+        warns[member.id] = []
+    warns[member.id].append(reason)
+    await ctx.send(f"✅ {member.mention} a reçu un avertissement.")
 
-    # Log la sanction
-    await log_sanction("Avertissement", reason, "N/A", member)
+    # Log action
+    await log_sanction(ctx.guild, member, "Warn", reason)
 
-# Commande tempexclude
+# Command: view warns
 @bot.command()
-async def tempexclude(ctx, member: discord.Member, duration: int, *, reason="Non spécifié"):
-    await ctx.guild.kick(member, reason=reason)
-    await ctx.send(f"{member.mention} a été exclu temporairement pour {duration} minutes. Raison : {reason}")
+async def warnlist(ctx, member: discord.Member):
+    user_warns = warns.get(member.id, [])
+    if not user_warns:
+        return await ctx.send(f"ℹ️ {member.mention} n'a aucun avertissement.")
 
-    # Log la sanction
-    await log_sanction("Exclusion temporaire", reason, duration, member)
+    embed = discord.Embed(title=f"Avertissements pour {member.display_name}", color=discord.Color.orange())
+    for i, warn in enumerate(user_warns, 1):
+        embed.add_field(name=f"Warn {i}", value=warn, inline=False)
+    await ctx.send(embed=embed)
 
-    # Réinvite après la durée
+# Command: tempexclude
+@bot.command()
+@requires_reason()
+async def tempexclude(ctx, member: discord.Member, duration: int, *, reason):
+    role = ctx.author.top_role
+    if role.id != ROLE_IDS['GM']:
+        return await ctx.send("❌ Seuls les GM peuvent utiliser cette commande.")
+    if duration > 1440:
+        return await ctx.send("❌ Vous ne pouvez pas exclure temporairement pendant plus d'un jour.")
+
+    # Restrict user access
+    excluded_role = discord.utils.get(ctx.guild.roles, name="Excluded")
+    if not excluded_role:
+        excluded_role = await ctx.guild.create_role(name="Excluded")
+        for channel in ctx.guild.channels:
+            await channel.set_permissions(excluded_role, read_messages=False, send_messages=False)
+
+    await member.add_roles(excluded_role, reason=reason)
+    await ctx.send(f"✅ {member.mention} a été exclu temporairement pour {duration} minutes.")
+
+    # Log action
+    await log_sanction(ctx.guild, member, "Tempexclude", reason, duration)
+
+    # Schedule role removal
     await asyncio.sleep(duration * 60)
-    invite = await ctx.channel.create_invite(max_uses=1, unique=True)
-    await member.send(f"Vous pouvez revenir sur le serveur : {invite.url}")
+    await member.remove_roles(excluded_role, reason="Fin de l'exclusion temporaire")
 
-# Commande clear
+# Command: derank
 @bot.command()
-async def clear(ctx, amount: int):
-    await ctx.channel.purge(limit=amount)
-    await ctx.send(f"{amount} messages ont été supprimés.", delete_after=5)
+async def derank(ctx, member: discord.Member):
+    role = ctx.author.top_role
+    target_role = member.top_role
 
-# Blocage de la commande +ban
-@bot.command()
-async def ban(ctx, *args):
-    await ctx.send("❌ La commande `+ban` est désactivée pour tous les rôles sauf les créateurs du serveur.")
+    if role.id not in ROLE_IDS.values() or role <= target_role:
+        return await ctx.send("❌ Vous ne pouvez pas rétrograder cet utilisateur.")
 
-# Gestion des rôles et permissions
-@bot.event
-async def on_ready():
-    print(f"Bot connecté en tant que {bot.user}")
-
+    await member.remove_roles(target_role, reason="Rétrogradation effectuée")
+    await ctx.send(f"✅ {member.mention} a été rétrogradé de {target_role.name}.")
 
 # Lancement du bot
 keep_alive()
