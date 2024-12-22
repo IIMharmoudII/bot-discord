@@ -299,6 +299,89 @@ async def on_message(message):
 
     await bot.process_commands(message)
 
+# Fonction pour enregistrer une sanction dans le salon 🚫・sanctions
+async def log_sanction(action, reason, duration, user):
+    channel = bot.get_channel(1312414751304978462)  # ID du salon 🚫・sanctions
+    embed = discord.Embed(
+        title="Sanction appliquée",
+        color=discord.Color.red()
+    )
+    embed.add_field(name="Action", value=action, inline=False)
+    embed.add_field(name="Raison", value=reason, inline=False)
+    embed.add_field(name="Durée", value=f"{duration} minutes", inline=False)
+    embed.add_field(name="Utilisateur", value=user.name, inline=False)
+    await channel.send(embed=embed)
+
+# Gestion des messages dans 📦・boîte-à-idées
+@bot.event
+async def on_message(message):
+    if message.channel.id == 1312415131489272000:  # ID du salon 📦・boîte-à-idées
+        await message.add_reaction("✅")
+        await message.add_reaction("❌")
+
+        # Crée un fil pour le message
+        thread = await message.create_thread(name=f"Discussion : {message.author.name}")
+        await thread.send(f"Qu'en pensez-vous ?")
+    await bot.process_commands(message)
+
+# Commande tempmute
+@bot.command()
+async def tempmute(ctx, member: discord.Member, duration: int, *, reason="Non spécifié"):
+    role = discord.utils.get(ctx.guild.roles, name="Muted")
+    if not role:
+        role = await ctx.guild.create_role(name="Muted")
+        for channel in ctx.guild.channels:
+            await channel.set_permissions(role, send_messages=False, speak=False)
+
+    await member.add_roles(role)
+    await ctx.send(f"{member.mention} a été mute pour {duration} minutes. Raison : {reason}")
+
+    # Log la sanction
+    await log_sanction("Mute", reason, duration, member)
+
+    # Unmute après la durée
+    await asyncio.sleep(duration * 60)
+    await member.remove_roles(role)
+    await ctx.send(f"{member.mention} a été unmute (durée écoulée).")
+
+# Commande warn
+@bot.command()
+async def warn(ctx, member: discord.Member, *, reason="Non spécifié"):
+    await ctx.send(f"{member.mention} a reçu un avertissement. Raison : {reason}")
+
+    # Log la sanction
+    await log_sanction("Avertissement", reason, "N/A", member)
+
+# Commande tempexclude
+@bot.command()
+async def tempexclude(ctx, member: discord.Member, duration: int, *, reason="Non spécifié"):
+    await ctx.guild.kick(member, reason=reason)
+    await ctx.send(f"{member.mention} a été exclu temporairement pour {duration} minutes. Raison : {reason}")
+
+    # Log la sanction
+    await log_sanction("Exclusion temporaire", reason, duration, member)
+
+    # Réinvite après la durée
+    await asyncio.sleep(duration * 60)
+    invite = await ctx.channel.create_invite(max_uses=1, unique=True)
+    await member.send(f"Vous pouvez revenir sur le serveur : {invite.url}")
+
+# Commande clear
+@bot.command()
+async def clear(ctx, amount: int):
+    await ctx.channel.purge(limit=amount)
+    await ctx.send(f"{amount} messages ont été supprimés.", delete_after=5)
+
+# Blocage de la commande +ban
+@bot.command()
+async def ban(ctx, *args):
+    await ctx.send("❌ La commande `+ban` est désactivée pour tous les rôles sauf les créateurs du serveur.")
+
+# Gestion des rôles et permissions
+@bot.event
+async def on_ready():
+    print(f"Bot connecté en tant que {bot.user}")
+
 
 # Lancement du bot
 keep_alive()
