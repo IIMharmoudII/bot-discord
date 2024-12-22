@@ -67,45 +67,77 @@ already_replied = set()  # Garde une trace des tickets où le bot a déjà répo
 
 @bot.event
 async def on_message(message):
-    # ID de la catégorie de support
-    support_category_id = 1312414647386640424
-    conditions_channel_id = 1312830314653155479
-    pub_channel_id = 1312850532293017631
+    try:
+        # Log de base pour traquer le message
+        print(f"Message reçu dans : {message.channel.name} (Catégorie ID : {message.channel.category_id if message.channel else 'Inconnue'})")
+        
+        # ID de la catégorie de support
+        support_category_id = 1312414647386640424
+        conditions_channel_id = 1312830314653155479
+        pub_channel_id = 1312850532293017631
 
-    # Vérifier si le message est dans un canal de la catégorie support
-    if message.channel.category_id == support_category_id:
-        # Vérifier si le message contient un embed avec "Demande de partenariat"
-        if message.author.bot and message.embeds:
-            for embed in message.embeds:
-                # Vérifier si "Demande de partenariat" est dans le titre, la description, ou les champs
-                if "Demande de partenariat" in (embed.title or "") or \
-                   "Demande de partenariat" in (embed.description or ""):
-                    # Vérifier si le bot a déjà répondu dans ce ticket
-                    if message.channel.id not in already_replied:
-                        # Marquer ce ticket comme traité
-                        already_replied.add(message.channel.id)
+        # Vérifier si le message est dans un canal de la catégorie support
+        if message.channel and message.channel.category_id == support_category_id:
+            print("Message détecté dans la catégorie de support.")
 
-                        # Obtenir les canaux nécessaires
-                        conditions_channel = bot.get_channel(conditions_channel_id)
-                        pub_channel = bot.get_channel(pub_channel_id)
+            # Vérifier si le message a été envoyé par un bot
+            if message.author.bot:
+                print(f"Message envoyé par le bot : {message.author.name}")
 
-                        # Récupérer l'auteur du ticket (mentionné par Draft Bot)
-                        opener = message.mentions[0] if message.mentions else "utilisateur inconnu"
+                # Vérifier si le message contient des embeds
+                if message.embeds:
+                    print(f"Nombre d'embeds trouvés : {len(message.embeds)}")
 
-                        # Construire la réponse
-                        response = (
-                            f"Bonjour {opener}, merci d'avoir ouvert un ticket de partenariat !\n"
-                            f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous avez lu et respecté les conditions, "
-                            f"envoyez votre pub dans ce salon (attention : il faut s'attribuer le rôle partenariat pour pouvoir envoyer des liens). Notre pub est disponible dans le salon {pub_channel.mention}.\n"
-                            f"Copiez-la avec les 3 petits points pour qu’elle s'affiche correctement et ajoutez les captures d'écran comme preuve de la pub dans le ticket.\n"
-                            f"Un administrateur enverra votre pub dès que possible et vous identifiera dans ce ticket dès que ce sera fait pour le clôturer."
-                        )
-                        # Envoyer la réponse dans le ticket
-                        await message.channel.send(response)
-                        break  # Stopper la boucle après avoir traité un embed correspondant
+                    for embed in message.embeds:
+                        # Debug pour voir le contenu de l'embed
+                        print(f"Embed contenu : {embed.to_dict()}")
 
-    # Continuer à traiter les commandes
+                        # Vérifier si "Demande de partenariat" est dans le titre ou la description
+                        if "Demande de partenariat" in (embed.title or "") or "Demande de partenariat" in (embed.description or ""):
+                            print("Demande de partenariat détectée dans l'embed.")
+
+                            # Marquer ce ticket comme traité si ce n'est pas déjà fait
+                            if message.channel.id not in already_replied:
+                                print("Ce ticket n'a pas encore reçu de réponse.")
+                                already_replied.add(message.channel.id)
+
+                                # Obtenir les canaux nécessaires
+                                conditions_channel = bot.get_channel(conditions_channel_id)
+                                pub_channel = bot.get_channel(pub_channel_id)
+
+                                # Récupérer l'auteur du ticket mentionné
+                                opener = message.mentions[0] if message.mentions else "utilisateur inconnu"
+
+                                # Construire la réponse
+                                response = (
+                                    f"Bonjour {opener}, merci d'avoir ouvert un ticket de partenariat !\n"
+                                    f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous avez lu et respecté les conditions, "
+                                    f"envoyez votre pub dans ce salon (attention : il faut s'attribuer le rôle partenariat pour pouvoir envoyer des liens). "
+                                    f"Notre pub est disponible dans le salon {pub_channel.mention}.\n"
+                                    f"Copiez-la avec les 3 petits points pour qu’elle s'affiche correctement et ajoutez les captures d'écran comme preuve de la pub dans le ticket.\n"
+                                    f"Un administrateur enverra votre pub dès que possible et vous identifiera dans ce ticket dès que ce sera fait pour le clôturer."
+                                )
+
+                                # Envoyer la réponse dans le ticket
+                                await message.channel.send(response)
+                                break  # Sortir de la boucle après le traitement
+                            else:
+                                print("Ce ticket a déjà été traité.")
+                        else:
+                            print("Pas de 'Demande de partenariat' détectée dans cet embed.")
+                else:
+                    print("Aucun embed trouvé dans le message.")
+            else:
+                print("Message non envoyé par un bot.")
+        else:
+            print("Message hors de la catégorie de support.")
+
+    except Exception as e:
+        print(f"Erreur détectée : {e}")
+
+    # Toujours traiter les commandes après les actions
     await bot.process_commands(message)
+
 
 # === Commandes du bot ===
 
