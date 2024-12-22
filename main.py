@@ -58,19 +58,12 @@ async def on_command_error(ctx, error):
         await ctx.send("Une erreur inattendue s'est produite.")
         raise error
 
-# ===  Gestion des tickets de partenariat ===
-# === Variables globales ===
-already_replied = set()  # Garde une trace des tickets où le bot a déjà répondu
-
-# === Variables globales ===
-already_replied = set()  # Garde une trace des tickets où le bot a déjà répondu
-
 @bot.event
 async def on_message(message):
     # IDs des catégories et salons
-    support_category_id = 1312414647386640424
-    conditions_channel_id = 1312830314653155479
-    pub_channel_id = 1312850532293017631
+    support_category_id = 1312414647386640424  # ID de la catégorie des tickets
+    conditions_channel_id = 1312830314653155479  # ID du salon des conditions
+    pub_channel_id = 1312850532293017631  # ID du salon pour les pubs
 
     # Ne pas répondre aux messages du bot lui-même
     if message.author == bot.user:
@@ -78,29 +71,39 @@ async def on_message(message):
 
     # Vérifier si le message est dans un canal de la catégorie support
     if message.channel and message.channel.category_id == support_category_id:
-        # Afficher le contenu brut du message pour debug (facultatif)
-        print(f"Message reçu : {message.content}")
-
-        # Vérifier si le message contient "Demande de partenariat"
+        # Vérifier si le message contient "Demande de partenariat" dans le texte brut
         if "Demande de partenariat" in message.content:
-            # Construire la réponse
-            conditions_channel = bot.get_channel(conditions_channel_id)
-            pub_channel = bot.get_channel(pub_channel_id)
+            await send_partnership_response(message.channel, conditions_channel_id, pub_channel_id)
+            return
 
-            # Vérifier si les salons sont valides
-            if conditions_channel and pub_channel:
-                response = (
-                    f"Bonjour, merci d'avoir ouvert un ticket de partenariat !\n"
-                    f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous avez lu et respecté les conditions, "
-                    f"envoyez votre pub dans ce salon (attention : il faut s'attribuer le rôle partenariat pour pouvoir envoyer des liens). "
-                    f"Notre pub est disponible dans le salon {pub_channel.mention}.\n"
-                    f"Copiez-la avec les 3 petits points pour qu’elle s'affiche correctement et ajoutez les captures d'écran comme preuve de la pub dans le ticket.\n"
-                    f"Un administrateur enverra votre pub dès que possible et vous identifiera dans ce ticket dès que ce sera fait pour le clôturer."
-                )
-                # Envoyer la réponse dans le même salon
-                await message.channel.send(response)
-            else:
-                print("Erreur : Les salons mentionnés n'existent pas ou ne sont pas accessibles.")
+        # Vérifier si "Demande de partenariat" est dans un embed
+        for embed in message.embeds:
+            if embed.description and "Demande de partenariat" in embed.description:
+                await send_partnership_response(message.channel, conditions_channel_id, pub_channel_id)
+                return
+
+    # Toujours traiter les commandes après les actions
+    await bot.process_commands(message)
+
+
+async def send_partnership_response(channel, conditions_channel_id, pub_channel_id):
+    """Envoie la réponse standard pour une demande de partenariat."""
+    conditions_channel = bot.get_channel(conditions_channel_id)
+    pub_channel = bot.get_channel(pub_channel_id)
+
+    # Vérifier si les salons sont valides
+    if conditions_channel and pub_channel:
+        response = (
+            f"Bonjour, merci d'avoir ouvert un ticket de partenariat !\n"
+            f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous avez lu et respecté les conditions, "
+            f"envoyez votre pub dans ce salon (attention : il faut s'attribuer le rôle partenariat pour pouvoir envoyer des liens). "
+            f"Notre pub est disponible dans le salon {pub_channel.mention}.\n"
+            f"Copiez-la avec les 3 petits points pour qu’elle s'affiche correctement et ajoutez les captures d'écran comme preuve de la pub dans le ticket.\n"
+            f"Un administrateur enverra votre pub dès que possible et vous identifiera dans ce ticket dès que ce sera fait pour le clôturer."
+        )
+        await channel.send(response)
+    else:
+        print("Erreur : Les salons mentionnés n'existent pas ou ne sont pas accessibles.")
 
     # Continuer à traiter les commandes
     await bot.process_commands(message)
