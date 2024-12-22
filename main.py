@@ -60,54 +60,47 @@ async def on_command_error(ctx, error):
 
 @bot.event
 async def on_message(message):
-    # IDs
+    # IDs des catégories et salons
     support_category_id = 1312414647386640424
     conditions_channel_id = 1312830314653155479
     pub_channel_id = 1312850532293017631
 
-    # Ne pas répondre à ses propres messages
+    # Ne pas répondre aux messages du bot lui-même
     if message.author == bot.user:
         return
 
     # Vérifier si le message est dans un canal de la catégorie support
     if message.channel and message.channel.category_id == support_category_id:
-        # Debugging : Afficher contenu du message
+        # Debugging : Afficher le contenu brut du message
         print(f"Message reçu : {message.content}")
 
-        # Vérifier texte brut
-        if "Demande de partenariat" in message.content or "> Demande de partenariat" in message.content:
-            response = await build_response(conditions_channel_id, pub_channel_id)
-            if response:
-                await message.channel.send(response)
+        # Vérifier si le texte est entouré par ``` ou `
+        if "Demande de partenariat" in message.content:
+            # Retirer les délimiteurs ``` si présents
+            clean_content = message.content.strip("```").strip("`").strip()
 
-        # Vérifier dans les embeds
-        elif message.embeds:
-            for embed in message.embeds:
-                if embed.description and "Demande de partenariat" in embed.description:
-                    response = await build_response(conditions_channel_id, pub_channel_id)
-                    if response:
-                        await message.channel.send(response)
+            # Vérifier si le texte nettoyé contient "Demande de partenariat"
+            if "Demande de partenariat" in clean_content:
+                # Construire la réponse
+                conditions_channel = bot.get_channel(conditions_channel_id)
+                pub_channel = bot.get_channel(pub_channel_id)
+
+                if conditions_channel and pub_channel:
+                    response = (
+                        f"Bonjour, merci d'avoir ouvert un ticket de partenariat !\n"
+                        f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous avez lu et respecté les conditions, "
+                        f"envoyez votre pub dans ce salon (attention : il faut s'attribuer le rôle partenariat pour pouvoir envoyer des liens). "
+                        f"Notre pub est disponible dans le salon {pub_channel.mention}.\n"
+                        f"Copiez-la avec les 3 petits points pour qu’elle s'affiche correctement et ajoutez les captures d'écran comme preuve de la pub dans le ticket.\n"
+                        f"Un administrateur enverra votre pub dès que possible et vous identifiera dans ce ticket dès que ce sera fait pour le clôturer."
+                    )
+                    await message.channel.send(response)
+                else:
+                    print("Erreur : Les salons mentionnés n'existent pas.")
 
     # Toujours traiter les commandes après les actions
     await bot.process_commands(message)
 
-# Fonction pour construire la réponse
-async def build_response(conditions_channel_id, pub_channel_id):
-    conditions_channel = bot.get_channel(conditions_channel_id)
-    pub_channel = bot.get_channel(pub_channel_id)
-
-    if conditions_channel and pub_channel:
-        return (
-            f"Bonjour, merci d'avoir ouvert un ticket de partenariat !\n"
-            f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous avez lu et respecté les conditions, "
-            f"envoyez votre pub dans ce salon (attention : il faut s'attribuer le rôle partenariat pour pouvoir envoyer des liens). "
-            f"Notre pub est disponible dans le salon {pub_channel.mention}.\n"
-            f"Copiez-la avec les 3 petits points pour qu’elle s'affiche correctement et ajoutez les captures d'écran comme preuve de la pub dans le ticket.\n"
-            f"Un administrateur enverra votre pub dès que possible et vous identifiera dans ce ticket dès que ce sera fait pour le clôturer."
-        )
-    else:
-        print("Erreur : Les salons mentionnés n'existent pas.")
-        return None
 
 # === Commandes du bot ===
 
