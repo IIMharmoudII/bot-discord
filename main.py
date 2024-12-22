@@ -134,13 +134,11 @@ async def pub(ctx):
 async def annonce(ctx, *, message: str):
     # Création de l'embed
     embed = discord.Embed(
-        title="📢 Annonce",
         description=message,  # Le message d'annonce
         color=discord.Color.purple()  # Couleur du texte (rose/violet)
     )
     
-    # Ajouter une barre de couleur à gauche
-    embed.add_field(name="**✨ Annonce**", value=" ", inline=False)
+    # Ajouter un footer avec le nom de l'auteur
     embed.set_footer(text=f"Annonce de {ctx.author.name}", icon_url=ctx.author.avatar.url)
     
     # Envoi du message
