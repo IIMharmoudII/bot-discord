@@ -58,21 +58,30 @@ async def on_command_error(ctx, error):
         await ctx.send("Une erreur inattendue s'est produite.")
         raise error
 
-# === Fonctionnalité demandée : Gestion des tickets de partenariat ===
+# ===  Gestion des tickets de partenariat ===
 @bot.event
 async def on_message(message):
-    if message.channel.name == "partenariat" and not message.author.bot:
-        conditions_channel_id = 1312830314653155479
-        pub_channel_id = 1312850532293017631
-        conditions_channel = bot.get_channel(conditions_channel_id)
-        pub_channel = bot.get_channel(pub_channel_id)
+    # ID de la catégorie de support
+    support_category_id = 1312414647386640424
+    conditions_channel_id = 1312830314653155479
+    pub_channel_id = 1312850532293017631
 
-        response = (
-            f"Bonjour {message.author.mention}, merci d'avoir ouvert un ticket de partenariat !\n"
-            f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous respectez les conditions, envoyez votre pub dans {pub_channel.mention}.\n"
-            f"Ajoutez les captures d'écran comme preuve de la pub disponible dans notre salon. Un administrateur vous pingera dès que votre pub sera ajoutée."
-        )
-        await message.channel.send(response)
+    # Vérifier si le message est dans un canal de la catégorie "🔖 ➜ Support 24H/24"
+    if message.channel.category_id == support_category_id:
+        # Vérifier si un bot a envoyé un message avec "Demande de partenariat"
+        if message.author.bot and "Demande de partenariat" in message.content:
+            conditions_channel = bot.get_channel(conditions_channel_id)
+            pub_channel = bot.get_channel(pub_channel_id)
+
+            # Envoyer une réponse spécifique
+            response = (
+                f"Bonjour {message.author.mention}, merci d'avoir ouvert un ticket de partenariat !\n"
+                f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous respectez les conditions, envoyez votre pub dans {pub_channel.mention}.\n"
+                f"Ajoutez les captures d'écran comme preuve de la pub disponible dans notre salon. Un administrateur vous pingera dès que votre pub sera ajoutée."
+            )
+            await message.channel.send(response)
+
+    # Traiter les commandes normalement
     await bot.process_commands(message)
 
 # === Commandes du bot ===
