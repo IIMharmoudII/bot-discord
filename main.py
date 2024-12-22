@@ -65,23 +65,35 @@ async def on_message(message):
     conditions_channel_id = 1312830314653155479
     pub_channel_id = 1312850532293017631
 
+    # Ne pas répondre à ses propres messages
+    if message.author == bot.user:
+        return
+
     # Vérifier si le message est dans un canal de la catégorie support
     if message.channel and message.channel.category_id == support_category_id:
+        # Debug : afficher le contenu du message
+        print(f"Message reçu : {message.content}")
+
         # Vérifier si le message contient "Demande de partenariat"
         if "Demande de partenariat" in message.content:
-            # Construire la réponse
+            # Obtenir les salons
             conditions_channel = bot.get_channel(conditions_channel_id)
             pub_channel = bot.get_channel(pub_channel_id)
-            response = (
-                f"Bonjour, merci d'avoir ouvert un ticket de partenariat !\n"
-                f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous avez lu et respecté les conditions, "
-                f"envoyez votre pub dans ce salon (attention : il faut s'attribuer le rôle partenariat pour pouvoir envoyer des liens). "
-                f"Notre pub est disponible dans le salon {pub_channel.mention}.\n"
-                f"Copiez-la avec les 3 petits points pour qu’elle s'affiche correctement et ajoutez les captures d'écran comme preuve de la pub dans le ticket.\n"
-                f"Un administrateur enverra votre pub dès que possible et vous identifiera dans ce ticket dès que ce sera fait pour le clôturer."
-            )
-            # Envoyer la réponse
-            await message.channel.send(response)
+
+            if conditions_channel and pub_channel:  # Vérifier que les salons existent
+                # Construire la réponse
+                response = (
+                    f"Bonjour, merci d'avoir ouvert un ticket de partenariat !\n"
+                    f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous avez lu et respecté les conditions, "
+                    f"envoyez votre pub dans ce salon (attention : il faut s'attribuer le rôle partenariat pour pouvoir envoyer des liens). "
+                    f"Notre pub est disponible dans le salon {pub_channel.mention}.\n"
+                    f"Copiez-la avec les 3 petits points pour qu’elle s'affiche correctement et ajoutez les captures d'écran comme preuve de la pub dans le ticket.\n"
+                    f"Un administrateur enverra votre pub dès que possible et vous identifiera dans ce ticket dès que ce sera fait pour le clôturer."
+                )
+                # Envoyer la réponse
+                await message.channel.send(response)
+            else:
+                print("Erreur : Les salons mentionnés n'existent pas.")
 
     # Toujours traiter les commandes après les actions
     await bot.process_commands(message)
