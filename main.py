@@ -58,6 +58,23 @@ async def on_command_error(ctx, error):
         await ctx.send("Une erreur inattendue s'est produite.")
         raise error
 
+# === Fonctionnalité demandée : Gestion des tickets de partenariat ===
+@bot.event
+async def on_message(message):
+    if message.channel.name == "partenariat" and not message.author.bot:
+        conditions_channel_id = 1312830314653155479
+        pub_channel_id = 1312850532293017631
+        conditions_channel = bot.get_channel(conditions_channel_id)
+        pub_channel = bot.get_channel(pub_channel_id)
+
+        response = (
+            f"Bonjour {message.author.mention}, merci d'avoir ouvert un ticket de partenariat !\n"
+            f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous respectez les conditions, envoyez votre pub dans {pub_channel.mention}.\n"
+            f"Ajoutez les captures d'écran comme preuve de la pub disponible dans notre salon. Un administrateur vous pingera dès que votre pub sera ajoutée."
+        )
+        await message.channel.send(response)
+    await bot.process_commands(message)
+
 # === Commandes du bot ===
 
 @bot.command()
