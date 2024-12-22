@@ -232,14 +232,39 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    # Gérer les tickets
+    # Cas 1 : Smash or Pass
+    if message.channel.id == TARGET_CHANNEL_ID:
+        await handle_smash_or_pass(message)
+        return  # Terminer ici pour éviter d'interférer avec d'autres fonctionnalités
+
+    # Cas 2 : Tickets (Demande de partenariat)
     await handle_tickets(message)
 
-    # Gérer Smash or Pass
-    await handle_smash_or_pass(message)
-
-    # Toujours traiter les commandes
+    # Toujours traiter les commandes après
     await bot.process_commands(message)
+
+
+async def handle_smash_or_pass(message):
+    """Gérer les messages du canal Smash or Pass."""
+    if not message.attachments:
+        # Supprimer les messages sans pièce jointe
+        await message.delete()
+        return
+
+    # Ajouter les réactions spécifiées
+    for reaction in VALID_REACTIONS:
+        await message.add_reaction(reaction)
+
+    # Créer un fil de discussion
+    thread_name = f"Fil de {message.author.display_name}"
+    thread = await message.create_thread(name=thread_name)
+    message_threads[message.id] = thread.id
+
+    # Envoyer un message d'introduction dans le thread
+    await thread.send(
+        f"Bienvenue dans le fil de discussion pour l'image postée par {message.author.mention}.\n"
+        f"Merci de respecter la personne et de rester courtois. Tout propos méprisant, dévalorisant, insultant ou méchant est interdit et sera sanctionné !"
+    )
 
 
 async def handle_tickets(message):
@@ -253,30 +278,6 @@ async def handle_tickets(message):
     if message.channel and message.channel.category_id == support_category_id:
         if "Demande de partenariat" in message.content:
             await send_partnership_response(message.channel, conditions_channel_id, pub_channel_id)
-
-
-async def handle_smash_or_pass(message):
-    """Gérer les messages du canal Smash or Pass."""
-    if message.channel.id == TARGET_CHANNEL_ID:
-        # Supprimer les messages sans pièce jointe
-        if not message.attachments:
-            await message.delete()
-            return
-
-        # Ajouter les réactions spécifiées
-        for reaction in VALID_REACTIONS:
-            await message.add_reaction(reaction)
-
-        # Créer un fil de discussion
-        thread_name = f"Fil de {message.author.display_name}"
-        thread = await message.create_thread(name=thread_name)
-        message_threads[message.id] = thread.id
-
-        # Envoyer un message d'introduction dans le thread
-        await thread.send(
-            f"Bienvenue dans le fil de discussion pour l'image postée par {message.author.mention}.\n"
-            f"Merci de respecter la personne et de rester courtois. Tout propos méprisant, dévalorisant, insultant ou méchant est interdit et sera sanctionné !"
-        )
 
 
 async def send_partnership_response(channel, conditions_channel_id, pub_channel_id):
