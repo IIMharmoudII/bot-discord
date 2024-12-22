@@ -95,9 +95,10 @@ async def on_message(message):
                         # Construire la réponse
                         response = (
                             f"Bonjour {opener}, merci d'avoir ouvert un ticket de partenariat !\n"
-                            f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous respectez les conditions, "
-                            f"envoyez votre pub dans {pub_channel.mention}.\n"
-                            f"Ajoutez les captures d'écran comme preuve de la pub disponible dans notre salon. Un administrateur vous pingera dès que votre pub sera ajoutée."
+                            f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous avez lu et respecté les conditions, "
+                            f"envoyez votre pub dans ce salon (attention : il faut s'attribuer le rôle partenariat pour pouvoir envoyer des liens). Notre pub est disponible dans le salon {pub_channel.mention}.\n"
+                            f"Copiez-la avec les 3 petits points pour qu’elle s'affiche correctement et ajoutez les captures d'écran comme preuve de la pub dans le ticket."
+                            f"Un administrateur enverra votre pub dès que possible et vous identifiera dans ce ticket dès que ce sera fait pour le clôturer."
                         )
                         # Envoyer la réponse dans le ticket
                         await message.channel.send(response)
