@@ -62,6 +62,9 @@ async def on_command_error(ctx, error):
 # === Variables globales ===
 already_replied = set()  # Garde une trace des tickets où le bot a déjà répondu
 
+# === Variables globales ===
+already_replied = set()  # Garde une trace des tickets où le bot a déjà répondu
+
 @bot.event
 async def on_message(message):
     # ID de la catégorie de support
@@ -71,29 +74,34 @@ async def on_message(message):
 
     # Vérifier si le message est dans un canal de la catégorie support
     if message.channel.category_id == support_category_id:
-        # Vérifier si le message contient "Demande de partenariat" envoyé par un bot
-        if message.author.bot and "Demande de partenariat" in message.content:
-            # Vérifier si le bot a déjà répondu dans ce ticket
-            if message.channel.id not in already_replied:
-                # Marquer ce ticket comme traité
-                already_replied.add(message.channel.id)
+        # Vérifier si le message contient un embed avec "Demande de partenariat"
+        if message.author.bot and message.embeds:
+            for embed in message.embeds:
+                # Vérifier si "Demande de partenariat" est dans le titre, la description, ou les champs
+                if "Demande de partenariat" in (embed.title or "") or \
+                   "Demande de partenariat" in (embed.description or ""):
+                    # Vérifier si le bot a déjà répondu dans ce ticket
+                    if message.channel.id not in already_replied:
+                        # Marquer ce ticket comme traité
+                        already_replied.add(message.channel.id)
 
-                # Obtenir les canaux nécessaires
-                conditions_channel = bot.get_channel(conditions_channel_id)
-                pub_channel = bot.get_channel(pub_channel_id)
+                        # Obtenir les canaux nécessaires
+                        conditions_channel = bot.get_channel(conditions_channel_id)
+                        pub_channel = bot.get_channel(pub_channel_id)
 
-                # Récupérer l'auteur du ticket (mentionné par Draft Bot)
-                opener = message.mentions[0] if message.mentions else "utilisateur inconnu"
+                        # Récupérer l'auteur du ticket (mentionné par Draft Bot)
+                        opener = message.mentions[0] if message.mentions else "utilisateur inconnu"
 
-                # Construire la réponse
-                response = (
-                    f"Bonjour {opener}, merci d'avoir ouvert un ticket de partenariat !\n"
-                    f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous respectez les conditions, "
-                    f"envoyez votre pub dans {pub_channel.mention}.\n"
-                    f"Ajoutez les captures d'écran comme preuve de la pub disponible dans notre salon. Un administrateur vous pingera dès que votre pub sera ajoutée."
-                )
-                # Envoyer la réponse dans le ticket
-                await message.channel.send(response)
+                        # Construire la réponse
+                        response = (
+                            f"Bonjour {opener}, merci d'avoir ouvert un ticket de partenariat !\n"
+                            f"Veuillez lire le salon {conditions_channel.mention}. Une fois que vous respectez les conditions, "
+                            f"envoyez votre pub dans {pub_channel.mention}.\n"
+                            f"Ajoutez les captures d'écran comme preuve de la pub disponible dans notre salon. Un administrateur vous pingera dès que votre pub sera ajoutée."
+                        )
+                        # Envoyer la réponse dans le ticket
+                        await message.channel.send(response)
+                        break  # Stopper la boucle après avoir traité un embed correspondant
 
     # Continuer à traiter les commandes
     await bot.process_commands(message)
