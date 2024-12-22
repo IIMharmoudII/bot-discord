@@ -270,6 +270,36 @@ async def shutdown(ctx):
     await ctx.send("Arrêt du bot... 🛑")
     await bot.close()
 
+# === Smash or Pass ===
+TARGET_CHANNEL_ID = 1312570416665071797
+VALID_REACTIONS = ["👍", "👎"]  # Réactions pour validé/pas validé
+message_threads = {}
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    if message.channel.id == TARGET_CHANNEL_ID:
+        if not message.attachments:
+            await message.delete()
+            return
+
+        for reaction in VALID_REACTIONS:
+            await message.add_reaction(reaction)
+
+        thread_name = f"Fil de {message.author.display_name}"
+        thread = await message.create_thread(name=thread_name)
+        message_threads[message.id] = thread.id
+
+        await thread.send(
+            f"Bienvenue dans le fil de discussion pour l'image postée par {message.author.mention}.\n"
+            f"Merci de respecter la personne et de rester courtois. Tout propos méprisant, dévalorisant, insultant ou méchant est interdit et sera sanctionné !"
+        )
+
+    await bot.process_commands(message)
+
+
 # Lancement du bot
 keep_alive()
 bot.run(TOKEN)
