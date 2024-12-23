@@ -226,26 +226,31 @@ TARGET_CHANNEL_ID = 1312570416665071797
 VALID_REACTIONS = ["👍", "👎"]  # Réactions pour validé/pas validé
 message_threads = {}
 
+# === Tickets ===
+SUPPORT_CATEGORY_ID = 1312414647386640424
+CONDITIONS_CHANNEL_ID = 1312830314653155479
+PUB_CHANNEL_ID = 1312850532293017631
+
 @bot.event
 async def on_message(message):
-    # Ne pas répondre aux messages du bot
+    # Ne pas traiter les messages du bot
     if message.author.bot:
         return
 
-    # Cas 1 : Smash or Pass
+    # Gérer Smash or Pass
     if message.channel.id == TARGET_CHANNEL_ID:
         await handle_smash_or_pass(message)
-        return  # Terminer ici pour éviter d'interférer avec d'autres fonctionnalités
 
-    # Cas 2 : Tickets (Demande de partenariat)
-    await handle_tickets(message)
+    # Gérer les tickets
+    elif message.channel and message.channel.category_id == SUPPORT_CATEGORY_ID:
+        await handle_tickets(message)
 
-    # Toujours traiter les commandes après
+    # Toujours traiter les commandes après les autres actions
     await bot.process_commands(message)
 
 
 async def handle_smash_or_pass(message):
-    """Gérer les messages du canal Smash or Pass."""
+    """Gestion des messages dans le canal Smash or Pass."""
     if not message.attachments:
         # Supprimer les messages sans pièce jointe
         await message.delete()
@@ -255,12 +260,12 @@ async def handle_smash_or_pass(message):
     for reaction in VALID_REACTIONS:
         await message.add_reaction(reaction)
 
-    # Créer un fil de discussion
+    # Créer un fil de discussion pour l'image postée
     thread_name = f"Fil de {message.author.display_name}"
     thread = await message.create_thread(name=thread_name)
     message_threads[message.id] = thread.id
 
-    # Envoyer un message d'introduction dans le thread
+    # Envoyer un message d'introduction dans le fil
     await thread.send(
         f"Bienvenue dans le fil de discussion pour l'image postée par {message.author.mention}.\n"
         f"Merci de respecter la personne et de rester courtois. Tout propos méprisant, dévalorisant, insultant ou méchant est interdit et sera sanctionné !"
@@ -268,24 +273,16 @@ async def handle_smash_or_pass(message):
 
 
 async def handle_tickets(message):
-    """Gérer les tickets, comme les demandes de partenariat."""
-    # IDs des catégories et salons
-    support_category_id = 1312414647386640424
-    conditions_channel_id = 1312830314653155479
-    pub_channel_id = 1312850532293017631
-
-    # Vérifier si le message est dans un salon de la catégorie support
-    if message.channel and message.channel.category_id == support_category_id:
-        if "Demande de partenariat" in message.content:
-            await send_partnership_response(message.channel, conditions_channel_id, pub_channel_id)
+    """Gestion des tickets, comme les demandes de partenariat."""
+    if "Demande de partenariat" in message.content:
+        await send_partnership_response(message.channel)
 
 
-async def send_partnership_response(channel, conditions_channel_id, pub_channel_id):
-    """Envoie la réponse standard pour une demande de partenariat."""
-    conditions_channel = bot.get_channel(conditions_channel_id)
-    pub_channel = bot.get_channel(pub_channel_id)
+async def send_partnership_response(channel):
+    """Envoie une réponse automatique pour une demande de partenariat."""
+    conditions_channel = bot.get_channel(CONDITIONS_CHANNEL_ID)
+    pub_channel = bot.get_channel(PUB_CHANNEL_ID)
 
-    # Vérifier si les salons sont valides
     if conditions_channel and pub_channel:
         response = (
             f"Bonjour, merci d'avoir ouvert un ticket de partenariat !\n"
